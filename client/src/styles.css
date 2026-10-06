@@ -50,7 +50,7 @@ textarea { resize:vertical; }
 .scale-bar span:first-child{border-radius:6px 0 0 6px}
 .scale-bar span:nth-child(5){border-radius:0 6px 6px 0}
 .scale-bar i{position:absolute;top:-5px;width:4px;height:22px;background:#111;border-radius:2px;transform:translateX(-2px)}
-.scale-ticks{display:flex;justify-content:space-between;font-size:.72rem;color:#6b7280;margin:4px 0 6px}
+.scale-ticks{position:relative;height:16px;font-size:.72rem;color:#6b7280;margin:4px 0 6px}.scale-ticks span{position:absolute;transform:translateX(-50%)}.scale-ticks span:first-child{transform:none}.scale-ticks span:last-child{transform:translateX(-100%)}
 .urlrow{display:flex;gap:8px}.urlrow input{flex:1}
 .btn.ghost{background:transparent;color:inherit;border:1px solid #9ca3af}
 .row2{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
