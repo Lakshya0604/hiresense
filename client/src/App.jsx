@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, getToken, setToken } from './api.js';
+import { api, getToken, setToken, download } from './api.js';
 
 function useHashRoute() {
   const [hash, setHash] = useState(window.location.hash || '#/');
@@ -66,12 +66,39 @@ function Landing({ onAuth }) {
   );
 }
 
+const BANDS = [
+  { max: 3, label: 'Poor match', color: '#dc2626', tip: 'Big gaps. Apply only if you can close them first.' },
+  { max: 5, label: 'Weak match', color: '#ea580c', tip: 'Fix the top gaps below before applying.' },
+  { max: 7.5, label: 'Partial match', color: '#d97706', tip: 'Decent base. Tailor the resume, then apply.' },
+  { max: 9, label: 'Strong match', color: '#16a34a', tip: 'Good fit. Apply with a tailored resume.' },
+  { max: 10.01, label: 'Excellent match', color: '#15803d', tip: 'Near perfect. Apply now.' }
+];
+const bandFor = (out10) => BANDS.find((b) => out10 < b.max) || BANDS[BANDS.length - 1];
+
 function ScoreRing({ score }) {
-  const color = score >= 75 ? '#16a34a' : score >= 50 ? '#d97706' : '#dc2626';
-  const label = score >= 75 ? 'Strong match' : score >= 50 ? 'Partial match' : 'Weak match';
+  const out10 = Math.round(score) / 10;
+  const band = bandFor(out10);
   return (
-    <div className="ring" style={{ '--p': score, '--c': color }}>
-      <div className="ring-inner"><strong>{score}</strong><span>{label}</span></div>
+    <div className="scorebox">
+      <div className="ring" style={{ '--p': score, '--c': band.color }}>
+        <div className="ring-inner"><strong>{out10.toFixed(1)}<small>/10</small></strong><span>{band.label}</span></div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreScale({ score }) {
+  const out10 = Math.round(score) / 10;
+  const band = bandFor(out10);
+  return (
+    <div className="scale" aria-label={`Match scale: ${out10.toFixed(1)} out of 10`}>
+      <div className="scale-bar">
+        {BANDS.map((b, i) => <span key={b.label} style={{ background: b.color, width: `${(b.max > 10 ? 10 : b.max) * 10 - (i ? BANDS[i - 1].max * 10 : 0)}%` }} />)}
+        <i style={{ left: `${Math.min(99, Math.max(1, score))}%` }} />
+      </div>
+      <div className="scale-ticks"><span>0</span><span>3</span><span>5</span><span>7.5</span><span>9</span><span>10</span></div>
+      <p className="small"><strong style={{ color: band.color }}>{score}% ({out10.toFixed(1)}/10) - {band.label}.</strong> {band.tip}</p>
+      <p className="muted small">Bands: under 3 poor, 3 to 5 weak, 5 to 7.5 partial, 7.5 to 9 strong, 9+ excellent. Resumes at 7.5/10 or more usually pass a first screen.</p>
     </div>
   );
 }
@@ -82,6 +109,24 @@ function Analyze() {
   const [title, setTitle] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState('');
+  const [fetching, setFetching] = useState(false);
+  const [note, setNote] = useState('');
+  async function fetchJd() {
+    setErr(''); setNote('');
+    if (!url.trim()) return setErr('Paste the job link first.');
+    setFetching(true);
+    try {
+      const job = await api('/fetch-jd', { method: 'POST', body: { url: url.trim() } });
+      setJd(job.text);
+      if (!title && job.title) setTitle(job.title.slice(0, 120));
+      setNote(`Fetched ${job.text.length.toLocaleString()} characters from ${job.host}. Check the text below, edit if needed, then analyze.`);
+    } catch (e2) {
+      if (e2.status === 401) { setToken(null); window.location.reload(); }
+      setErr(e2.message);
+    }
+    setFetching(false);
+  }
   async function submit(e) {
     e.preventDefault();
     setErr('');
@@ -107,8 +152,16 @@ function Analyze() {
       <label>Resume (PDF, max 4 MB)
         <input type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files[0] || null)} />
       </label>
-      <label>Job description
-        <textarea rows={12} value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the full job description here..." />
+      <label>Job posting link (optional)
+        <div className="urlrow">
+          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://company.com/careers/job-123" />
+          <button type="button" className="btn ghost" disabled={fetching} onClick={fetchJd}>{fetching ? 'Fetching...' : 'Fetch job text'}</button>
+        </div>
+      </label>
+      <p className="muted small">Some sites (LinkedIn, Indeed and others) block automatic reading. If the fetch fails, just paste the description below.</p>
+      {note && <p className="okmsg">{note}</p>}
+      <label>Job description (fetched or pasted)
+        <textarea rows={12} value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the full job description here, or fetch it from a link above..." />
       </label>
       <p className="muted">{jd.length.toLocaleString()} / 12,000 characters</p>
       {err && <p className="error">{err}</p>}
@@ -120,6 +173,66 @@ function Analyze() {
 function Chips({ items, kind }) {
   if (!items?.length) return <p className="muted">None found.</p>;
   return <div className="chips">{items.map((t) => <span key={t} className={`chip ${kind}`}>{t}</span>)}</div>;
+}
+
+function TailorCard({ d, setD }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const t = d.tailored;
+  async function make() {
+    setErr(''); setBusy(true);
+    try {
+      const tailored = await api(`/analyses/${d._id}/tailor`, { method: 'POST' });
+      setD({ ...d, tailored });
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+  async function dl(ext) {
+    setErr('');
+    try { await download(`/analyses/${d._id}/tailored?format=${ext}`, `tailored_resume.${ext}`); } catch (e) { setErr(e.message); }
+  }
+  return (
+    <div className="card">
+      <h3>Tailored resume for this job</h3>
+      <p className="muted small">The AI rewrites your resume for this job using only what is already in it: it rewords, reorders and puts the relevant parts first. It never adds skills you did not list.</p>
+      {!d.canTailor && !t && <p className="muted">This analysis was made before tailoring existed. Run a new analysis to use it.</p>}
+      {d.canTailor && !t && <button className="btn" disabled={busy} onClick={make}>{busy ? 'Tailoring... 15 to 30 seconds' : 'Tailor my resume to this job'}</button>}
+      {t && (
+        <>
+          <div className="row2">
+            <button className="btn" onClick={() => dl('pdf')}>Download PDF</button>
+            <button className="btn ghost" onClick={() => dl('docx')}>Download DOCX (editable)</button>
+            {d.canTailor && <button className="btn ghost" disabled={busy} onClick={make}>{busy ? 'Redoing...' : 'Redo'}</button>}
+          </div>
+          {t.summary && <><h4>New summary</h4><p>{t.summary}</p></>}
+          {t.changes?.length > 0 && <><h4>What changed</h4><ul>{t.changes.map((c, i) => <li key={i}>{c}</li>)}</ul></>}
+          {t.removedUnsupported > 0 && <p className="muted small">{t.removedUnsupported} item(s) the AI tried to add that were not in your original resume were removed automatically.</p>}
+          <p className="muted small">Read the file before sending it. Everything in it should be true for you.</p>
+        </>
+      )}
+      {err && <p className="error">{err}</p>}
+    </div>
+  );
+}
+
+function ResourcesCard({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div className="card">
+      <h3>Prepare for the gaps</h3>
+      <p className="muted small">Free videos and docs for the skills this job wants and your resume lacks. Links marked "search" open a search for that topic because no hand-picked resource is listed for it.</p>
+      {items.map((r) => (
+        <div className="res" key={r.skill}>
+          <h4>{r.skill}</h4>
+          <ul>
+            {r.videos.map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">{r.curated ? 'Video' : 'Search'}: {v.title}</a>{v.by && r.curated ? <span className="muted small"> - {v.by}</span> : null}</li>)}
+            {r.docs.map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">Docs: {v.title}</a></li>)}
+            {(r.search || []).map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">{v.title}</a></li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Result({ id }) {
@@ -137,6 +250,7 @@ function Result({ id }) {
           <h2>{d.jobTitle || 'Match result'}</h2>
           <p className="muted">{d.resumeFile} - {new Date(d.createdAt).toLocaleString()}</p>
           <p>{r.summary}</p>
+          <ScoreScale score={d.score} />
           <p className="muted small">Score = 50% keyword coverage ({d.keywordCoverage}%, counted in code) + 50% AI fit rating ({d.llmScore}).</p>
         </div>
       </div>
@@ -173,6 +287,8 @@ function Result({ id }) {
           {(r.formatting || []).map((t, i) => <p key={i} className="small">- {t}</p>)}
         </div>
       </div>
+      <TailorCard d={d} setD={setD} />
+      <ResourcesCard items={d.resources} />
       <p><a href="#/new" className="btn">Analyze another</a></p>
     </div>
   );
@@ -195,7 +311,7 @@ function History() {
       <ul className="history">
         {items.map((i) => (
           <li key={i._id}>
-            <a href={`#/result/${i._id}`}><strong>{i.score}</strong> <span>{i.jobTitle || i.jdPreview?.slice(0, 60) || 'Untitled'}</span><em>{new Date(i.createdAt).toLocaleDateString()}</em></a>
+            <a href={`#/result/${i._id}`}><strong>{(i.score / 10).toFixed(1)}/10</strong> <span>{i.jobTitle || i.jdPreview?.slice(0, 60) || 'Untitled'}</span><em>{new Date(i.createdAt).toLocaleDateString()}</em></a>
             <button className="link" onClick={() => del(i._id)}>Delete</button>
           </li>
         ))}
@@ -232,7 +348,7 @@ export default function App() {
         )}
       </header>
       <main className="wrap">{page}</main>
-      <footer className="foot">HireSense - built by Lakshya Yadav. Resumes are processed in memory and only the analysis result is stored.</footer>
+      <footer className="foot">HireSense - built by Lakshya Yadav. Your resume PDF is not kept. The extracted text and results are saved to your account so you can tailor later, and you can delete any analysis from History.</footer>
     </>
   );
 }
