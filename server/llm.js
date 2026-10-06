@@ -30,7 +30,7 @@ function parseJson(text) {
   }
 }
 
-async function groq(prompt) {
+async function groq(prompt, system = SYSTEM) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -39,7 +39,7 @@ async function groq(prompt) {
       temperature: 0.2,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: SYSTEM },
+        { role: 'system', content: system },
         { role: 'user', content: prompt }
       ]
     })
@@ -49,7 +49,7 @@ async function groq(prompt) {
   return parseJson(data.choices[0].message.content);
 }
 
-async function gemini(prompt) {
+async function gemini(prompt, system = SYSTEM) {
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -57,7 +57,7 @@ async function gemini(prompt) {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
       })
@@ -88,4 +88,28 @@ export async function reviewResume({ resumeText, jd, matched, missing }) {
     formatting: arr(raw.formatting, 5),
     top_fixes: arr(raw.top_fixes, 5)
   };
+}
+
+const TAILOR_SYSTEM = `You tailor a candidate's resume to a job description. You are bound by strict honesty rules.
+Rules:
+- Use ONLY facts, skills, tools, employers, dates, numbers and education that appear in the resume text. NEVER add a skill, tool, certification, employer, number or achievement that is not in the resume, even if the job asks for it.
+- You may: reword bullets in stronger action-verb language, reorder sections, bullets and skills so the most relevant come first, use the job's own wording ONLY for things the candidate has really done or used, and write a short summary built only from resume facts.
+- Keep every real project, job and education entry. Do not drop dates or contact details. Keep the resume to one or two pages of content.
+- If a number is missing, do not make one up and do not use placeholders.
+Return ONLY valid JSON with this exact shape:
+{
+ "name": "<candidate name>",
+ "contact": ["<email, phone, links, location exactly as in the resume>"],
+ "summary": "<2 to 3 sentence professional summary using only resume facts, aimed at this job>",
+ "skills": [ {"group": "<e.g. Languages>", "items": ["<skill from the resume>"]} ],
+ "experience": [ {"title": "", "org": "", "dates": "", "bullets": [""]} ],
+ "projects": [ {"name": "", "tech": "", "bullets": [""]} ],
+ "education": [ {"degree": "", "org": "", "dates": "", "details": ""} ],
+ "other": [ {"heading": "<e.g. Certifications, Achievements>", "items": [""]} ],
+ "changes": ["<up to 6 short notes on what you changed and why>"]
+}`;
+
+export async function tailorResume({ resumeText, jd }) {
+  const prompt = `JOB DESCRIPTION:\n${clip(jd, 6000)}\n\nORIGINAL RESUME TEXT:\n${clip(resumeText, 9000)}`;
+  return process.env.GROQ_API_KEY ? groq(prompt, TAILOR_SYSTEM) : gemini(prompt, TAILOR_SYSTEM);
 }
