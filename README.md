@@ -4,7 +4,7 @@ Upload your resume (PDF), paste a job description, and get a match score with co
 
 ## How the score works
 - 50%: keyword coverage, counted in plain code (`server/keywords.js`, covered by tests).
-- 50%: an LLM rating of how well the resume fits the job (Groq Llama 3.3 70B, or Gemini as a fallback).
+- 50%: an LLM rating of how well the resume fits the job (Groq gpt-oss-120b, or Gemini as a fallback).
 - The LLM is told to use only facts in the resume.
 
 ## Stack
