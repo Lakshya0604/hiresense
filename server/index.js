@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { getDocumentProxy, extractText } from 'unpdf';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -88,7 +88,10 @@ app.post('/api/analyze', auth, analyzeLimiter, upload.single('resume'), async (r
 
     let resumeText;
     try {
-      resumeText = (await pdfParse(req.file.buffer)).text.replace(/\u0000/g, '').trim();
+      const pdf = await getDocumentProxy(new Uint8Array(req.file.buffer));
+      if (pdf.numPages > 6) return res.status(400).json({ error: 'That PDF has ' + pdf.numPages + ' pages. Upload a resume of 6 pages or fewer.' });
+      const { text } = await extractText(pdf, { mergePages: true });
+      resumeText = String(text).replace(/\u0000/g, '').trim();
     } catch {
       return res.status(400).json({ error: 'Could not read this PDF. Try exporting it again from Word or Google Docs.' });
     }
