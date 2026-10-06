@@ -106,7 +106,7 @@ Return ONLY valid JSON with this exact shape:
  "projects": [ {"name": "", "tech": "", "bullets": [""]} ],
  "education": [ {"degree": "", "org": "", "dates": "", "details": ""} ],
  "other": [ {"heading": "<e.g. Certifications, Achievements>", "items": [""]} ],
- "changes": ["<up to 6 short notes on what you changed and why>"]
+ "changes": ["<up to 6 short notes, in plain language for the candidate, on what you changed and why. Never mention JSON, schema or formatting rules>"]
 }`;
 
 export async function tailorResume({ resumeText, jd }) {
