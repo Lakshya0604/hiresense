@@ -21,7 +21,11 @@ const analysisSchema = new mongoose.Schema(
     matched: [String],
     missing: [String],
     formatting: Object,
-    review: Object
+    review: Object,
+    resources: [Object],
+    jdText: { type: String, select: false },
+    resumeText: { type: String, select: false },
+    tailored: { type: Object, select: false }
   },
   { timestamps: true }
 );
