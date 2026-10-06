@@ -96,7 +96,7 @@ function ScoreScale({ score }) {
         {BANDS.map((b, i) => <span key={b.label} style={{ background: b.color, width: `${(b.max > 10 ? 10 : b.max) * 10 - (i ? BANDS[i - 1].max * 10 : 0)}%` }} />)}
         <i style={{ left: `${Math.min(99, Math.max(1, score))}%` }} />
       </div>
-      <div className="scale-ticks"><span>0</span><span>3</span><span>5</span><span>7.5</span><span>9</span><span>10</span></div>
+      <div className="scale-ticks">{[0, 3, 5, 7.5, 9, 10].map((t) => <span key={t} style={{ left: `${t * 10}%` }}>{t}</span>)}</div>
       <p className="small"><strong style={{ color: band.color }}>{score}% ({out10.toFixed(1)}/10) - {band.label}.</strong> {band.tip}</p>
       <p className="muted small">Bands: under 3 poor, 3 to 5 weak, 5 to 7.5 partial, 7.5 to 9 strong, 9+ excellent. Resumes at 7.5/10 or more usually pass a first screen.</p>
     </div>
@@ -225,7 +225,7 @@ function ResourcesCard({ items }) {
         <div className="res" key={r.skill}>
           <h4>{r.skill}</h4>
           <ul>
-            {r.videos.map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">{r.curated ? 'Video' : 'Search'}: {v.title}</a>{v.by && r.curated ? <span className="muted small"> - {v.by}</span> : null}</li>)}
+            {r.videos.map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">{r.curated ? 'Video: ' : ''}{v.title}</a>{v.by && r.curated ? <span className="muted small"> - {v.by}</span> : null}</li>)}
             {r.docs.map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">Docs: {v.title}</a></li>)}
             {(r.search || []).map((v) => <li key={v.url}><a href={v.url} target="_blank" rel="noopener noreferrer">{v.title}</a></li>)}
           </ul>
