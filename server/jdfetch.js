@@ -106,7 +106,7 @@ function fromJsonLd(html) {
 
 const WALL = /(sign in|log in|login|join now|create an account|captcha|verify you are (a )?human|enable javascript|access denied|are you a robot|just a moment)/i;
 
-export async function fetchJobPosting(rawUrl) {
+async function fetchPage(rawUrl) {
   let url;
   try { url = new URL(String(rawUrl).trim()); } catch { throw new JdFetchError('That does not look like a valid link.', 'bad_url'); }
   if (!['http:', 'https:'].includes(url.protocol)) throw new JdFetchError('Only http and https links work.', 'bad_url');
@@ -145,4 +145,53 @@ export async function fetchJobPosting(rawUrl) {
     throw new JdFetchError('This site blocks automatic reading (it needs a login or blocks bots).', 'blocked');
   }
   return { text, title: title.slice(0, 120), host: url.hostname, source: ld ? 'structured' : 'page' };
+}
+
+const BLOCKS = /(^|\.)(linkedin|indeed|glassdoor|naukri|monster|ziprecruiter|foundit|internshala)\./i;
+
+// Greenhouse and Lever publish open JSON APIs, which are more reliable than reading their pages.
+async function viaApi(url) {
+  const h = url.hostname;
+  let m;
+  if (/greenhouse\.io$/.test(h)) {
+    const id = url.searchParams.get('gh_jid') || (url.pathname.match(/\/jobs\/(\d+)/) || [])[1];
+    const board = url.searchParams.get('for') || url.pathname.split('/').filter(Boolean)[0];
+    if (id && board && board !== 'embed') {
+      const r = await getOnce(new URL(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board)}/jobs/${encodeURIComponent(id)}`));
+      if (r.status === 200) {
+        const j = JSON.parse(r.body);
+        const text = `${j.title || ''}${j.company_name ? ' at ' + j.company_name : ''}\n\n${htmlToText(decode(String(j.content || '')))}`.trim();
+        if (text.length > 300) return { text: text.slice(0, 12000), title: String(j.title || '').slice(0, 120), host: h, source: 'api' };
+      }
+    }
+  } else if (/lever\.co$/.test(h) && (m = url.pathname.match(/^\/([^/]+)\/([0-9a-f-]{36})/))) {
+    const r = await getOnce(new URL(`https://api.lever.co/v0/postings/${m[1]}/${m[2]}`));
+    if (r.status === 200) {
+      const j = JSON.parse(r.body);
+      const lists = (j.lists || []).map((l) => `${l.text}\n${htmlToText(String(l.content || ''))}`).join('\n\n');
+      const text = `${j.text || ''}\n\n${j.descriptionPlain || ''}\n\n${lists}\n\n${j.additionalPlain || ''}`.trim();
+      if (text.length > 300) return { text: text.slice(0, 12000), title: String(j.text || '').slice(0, 120), host: h, source: 'api' };
+    }
+  }
+  return null;
+}
+
+export async function fetchJobPosting(rawUrl) {
+  let url;
+  try { url = new URL(String(rawUrl).trim()); } catch { throw new JdFetchError('That does not look like a valid link. Check it, or paste the job description instead.', 'bad_url'); }
+  try {
+    const viaJson = await viaApi(url).catch(() => null);
+    if (viaJson) return viaJson;
+    return await fetchPage(rawUrl);
+  } catch (e) {
+    if (!(e instanceof JdFetchError) || e.code === 'bad_url' || e.code === 'blocked_address') throw e;
+    const host = url.hostname.replace(/^www\./, '');
+    if (e.code === 'blocked' || BLOCKS.test(url.hostname) || e.code === 'no_content') {
+      const sure = e.code === 'blocked' || BLOCKS.test(url.hostname);
+      throw new JdFetchError(sure
+        ? `${host} blocks automatic reading, so this link will not work here.`
+        : `Could not read the job text from ${host}. The page probably loads its content with JavaScript or needs a login, so this link will not work here.`, e.code === 'no_content' ? 'no_content' : 'blocked');
+    }
+    throw new JdFetchError(`${e.message} (${host})`, e.code);
+  }
 }
