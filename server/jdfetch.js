@@ -79,6 +79,7 @@ export function htmlToText(html) {
   )
     .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/ *\n */g, '\n')
+    .replace(/^-\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
