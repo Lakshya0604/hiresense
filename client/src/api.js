@@ -26,3 +26,19 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   }
   return data;
 }
+
+export async function download(path, filename) {
+  const res = await fetch(`/api${path}`, { headers: { authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Download failed.');
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
