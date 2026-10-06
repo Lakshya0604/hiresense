@@ -134,6 +134,8 @@ function Analyze() {
     const form = new FormData();
     form.append('resume', file);
     form.append('jd', jd);
+    form.append('jdUrl', url.trim());
+    if (!jd.trim() && !url.trim()) return setErr('Enter a job link or paste the job description.');
     form.append('jobTitle', title);
     setBusy(true);
     try {
@@ -152,15 +154,15 @@ function Analyze() {
       <label>Resume (PDF, max 4 MB)
         <input type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files[0] || null)} />
       </label>
-      <label>Job posting link (optional)
+      <label>Job posting link
         <div className="urlrow">
           <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://company.com/careers/job-123" />
           <button type="button" className="btn ghost" disabled={fetching} onClick={fetchJd}>{fetching ? 'Fetching...' : 'Fetch job text'}</button>
         </div>
       </label>
-      <p className="muted small">Some sites (LinkedIn, Indeed and others) block automatic reading. If the fetch fails, just paste the description below.</p>
+      <p className="muted small">Give either the link or the pasted description. With only a link, the job text is fetched when you analyze. LinkedIn, Indeed and some other sites block reading; then paste the description.</p>
       {note && <p className="okmsg">{note}</p>}
-      <label>Job description (fetched or pasted)
+      <label>Job description (or just use the link above)
         <textarea rows={12} value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the full job description here, or fetch it from a link above..." />
       </label>
       <p className="muted">{jd.length.toLocaleString()} / 12,000 characters</p>
