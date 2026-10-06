@@ -37,31 +37,60 @@ function tokens(norm) {
     .filter(Boolean);
 }
 
-// Pull the most important terms out of a job description by frequency, plus known tech phrases.
+// Known skills and tools. Terms found in the job description are the primary keywords.
+const VOCAB = `javascript typescript python java kotlin swift php ruby rust scala dart c++ c# .net
+react react.js next.js vue vue.js angular svelte redux tailwind bootstrap html css sass webpack vite jquery
+node node.js express express.js nest.js fastapi flask django spring spring boot laravel rails graphql rest restful rest api rest apis grpc websocket websockets socket.io
+mongodb mongoose mysql postgresql postgres sqlite redis elasticsearch dynamodb firebase supabase sql nosql prisma sequelize
+docker kubernetes terraform ansible jenkins ci/cd github actions gitlab git github linux nginx aws gcp azure ec2 s3 lambda vercel netlify heroku render
+jest mocha cypress selenium playwright unit testing integration testing tdd
+machine learning deep learning nlp natural language processing computer vision llm llms rag langchain openai prompt engineering tensorflow pytorch scikit-learn pandas numpy
+android ios react native flutter figma
+agile scrum jira microservices system design data structures algorithms oop object oriented design patterns authentication oauth jwt security
+kafka rabbitmq airflow spark hadoop tableau power bi excel
+communication leadership collaboration problem solving code review code reviews`.split(/\n/).join(' ');
+const VOCAB_TERMS = [...new Set(
+  VOCAB.replace(/\s+/g, ' ').trim().split(' ')
+)];
+const MULTI = [
+  'rest api', 'rest apis', 'machine learning', 'deep learning', 'natural language processing', 'computer vision',
+  'prompt engineering', 'github actions', 'spring boot', 'react native', 'power bi', 'unit testing',
+  'integration testing', 'system design', 'data structures', 'object oriented', 'design patterns',
+  'problem solving', 'code review', 'code reviews', 'ci/cd'
+];
+const SINGLE = VOCAB_TERMS.filter((t) => !['rest', 'api', 'apis', 'design', 'deep', 'machine', 'learning', 'natural', 'language', 'processing', 'computer', 'vision', 'prompt', 'engineering', 'github', 'actions', 'spring', 'boot', 'react', 'native', 'power', 'bi', 'unit', 'testing', 'integration', 'system', 'data', 'structures', 'object', 'oriented', 'patterns', 'problem', 'solving', 'code', 'review', 'reviews'].includes(t) || ['react'].includes(t));
+const SINGLE_SET = new Set([...SINGLE, 'api', 'apis', 'github', 'testing']);
+
+// Pull the most important terms out of a job description: known skills first, then repeated words.
 export function extractJdKeywords(jd, limit = 30) {
   const norm = normalize(jd);
   const counts = new Map();
+  for (const phrase of MULTI) {
+    if (containsTerm(norm, phrase)) counts.set(phrase, 3);
+  }
   const toks = tokens(norm);
   for (const t of toks) {
-    if (STOP.has(t) || t.length < 2 || /^\d+$/.test(t)) continue;
-    counts.set(t, (counts.get(t) || 0) + 1);
+    if (SINGLE_SET.has(t)) counts.set(t, (counts.get(t) || 0) + 1);
   }
-  for (const phrase of TECH) {
-    if (phrase.includes(' ') || /[+#./]/.test(phrase)) {
-      if (containsTerm(norm, phrase)) counts.set(phrase, (counts.get(phrase) || 0) + 2);
+  // "rest api" already covers "rest" and "apis"
+  if (counts.has('rest api') || counts.has('rest apis')) {
+    counts.delete('rest');
+    counts.delete('apis');
+    counts.delete('api');
+  }
+  const found = [...counts.entries()].map(([term, count]) => ({ term, count: count + (counts.get(term) > 1 ? 1 : 0) }));
+  // Fill with words repeated at least twice if the JD names very few known skills.
+  if (found.length < 8) {
+    const rep = new Map();
+    for (const t of toks) {
+      if (STOP.has(t) || t.length < 3 || /^\d+$/.test(t) || counts.has(t)) continue;
+      rep.set(t, (rep.get(t) || 0) + 1);
+    }
+    for (const [term, count] of [...rep.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8 - found.length)) {
+      found.push({ term, count });
     }
   }
-  // Boost known tech short terms so "sql" and "aws" survive the length filter.
-  for (const phrase of TECH) {
-    if (!phrase.includes(' ') && counts.has(phrase)) counts.set(phrase, counts.get(phrase) + 1);
-  }
-  // Single letters like "go" and "r" are too noisy to count.
-  counts.delete('go');
-  counts.delete('r');
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([term, count]) => ({ term, count }));
+  return found.sort((a, b) => b.count - a.count || a.term.localeCompare(b.term)).slice(0, limit);
 }
 
 export function matchKeywords(resumeText, jd, limit = 30) {
