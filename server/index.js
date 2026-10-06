@@ -95,7 +95,7 @@ app.post('/api/analyze', auth, analyzeLimiter, upload.single('resume'), async (r
         if (!jobTitle) jobTitle = job.title.slice(0, 120);
       } catch (e) {
         const why = e instanceof JdFetchError ? e.message : 'Could not read that link.';
-        return res.status(422).json({ error: why + ' Please paste the job description instead.', code: e.code || 'fetch_failed', needPaste: true });
+        return res.status(422).json({ error: why + ' Please paste the job description here instead, or try the same job from another portal or the company careers page.', code: e.code || 'fetch_failed', needPaste: true });
       }
     }
     if (!req.file) return res.status(400).json({ error: 'Upload your resume as a PDF.' });
@@ -148,7 +148,7 @@ app.post('/api/fetch-jd', auth, fetchLimiter, async (req, res) => {
     const job = await fetchJobPosting(req.body?.url);
     res.json(job);
   } catch (e) {
-    if (e instanceof JdFetchError) return res.status(422).json({ error: e.message + ' Please paste the job description instead.', code: e.code, needPaste: true });
+    if (e instanceof JdFetchError) return res.status(422).json({ error: e.message + ' Please paste the job description here instead, or try the same job from another portal or the company careers page.', code: e.code, needPaste: true });
     console.error('fetch-jd failed:', e.message);
     res.status(422).json({ error: 'Could not read that link. Please paste the job description instead.', code: 'fetch_failed', needPaste: true });
   }
