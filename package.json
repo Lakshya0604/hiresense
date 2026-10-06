@@ -12,16 +12,18 @@
     "build": "npm install --prefix client --include=dev && npm run build --prefix client",
     "dev:server": "node --watch server/index.js",
     "dev:client": "npm run dev --prefix client",
-    "test": "node --test server/keywords.test.js"
+    "test": "node --test server/keywords.test.js server/features.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "docx": "^9.8.1",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.0",
     "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.20.2",
     "unpdf": "^1.8.1"
   },
   "license": "MIT"
