@@ -68,13 +68,24 @@ async function gemini(prompt, system = SYSTEM) {
   return parseJson(data.candidates[0].content.parts[0].text);
 }
 
+// One automatic retry: the free models sometimes return bad JSON or a short rate-limit error.
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    console.error('LLM attempt 1 failed:', e.message);
+    await new Promise((r) => setTimeout(r, 1500));
+    return fn();
+  }
+}
+
 export function llmConfigured() {
   return Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
 }
 
 export async function reviewResume({ resumeText, jd, matched, missing }) {
   const prompt = `JOB DESCRIPTION:\n${clip(jd, 6000)}\n\nRESUME TEXT:\n${clip(resumeText, 9000)}\n\nKeyword check already done in code (use as a hint, verify yourself):\nFound in resume: ${matched.join(', ') || 'none'}\nNot found in resume: ${missing.join(', ') || 'none'}`;
-  const raw = process.env.GROQ_API_KEY ? await groq(prompt) : await gemini(prompt);
+  const raw = await withRetry(() => (process.env.GROQ_API_KEY ? groq(prompt) : gemini(prompt)));
   const arr = (v, n) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).slice(0, n) : []);
   return {
     fit_score: Math.max(0, Math.min(100, Math.round(Number(raw.fit_score) || 0))),
@@ -111,5 +122,5 @@ Return ONLY valid JSON with this exact shape:
 
 export async function tailorResume({ resumeText, jd }) {
   const prompt = `JOB DESCRIPTION:\n${clip(jd, 6000)}\n\nORIGINAL RESUME TEXT:\n${clip(resumeText, 9000)}`;
-  return process.env.GROQ_API_KEY ? groq(prompt, TAILOR_SYSTEM) : gemini(prompt, TAILOR_SYSTEM);
+  return withRetry(() => (process.env.GROQ_API_KEY ? groq(prompt, TAILOR_SYSTEM) : gemini(prompt, TAILOR_SYSTEM)));
 }
