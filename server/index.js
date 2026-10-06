@@ -84,12 +84,24 @@ app.get('/api/auth/me', auth, async (req, res) => {
 
 app.post('/api/analyze', auth, analyzeLimiter, upload.single('resume'), async (req, res) => {
   try {
-    const jd = String(req.body.jd || '').trim();
-    const jobTitle = String(req.body.jobTitle || '').trim().slice(0, 120);
+    let jd = String(req.body.jd || '').trim();
+    let jobTitle = String(req.body.jobTitle || '').trim().slice(0, 120);
+    const jdUrl = String(req.body.jdUrl || '').trim();
+    // Either input alone is enough: a pasted description wins, otherwise the link is fetched here.
+    if (jd.length < 80 && jdUrl) {
+      try {
+        const job = await fetchJobPosting(jdUrl);
+        jd = job.text;
+        if (!jobTitle) jobTitle = job.title.slice(0, 120);
+      } catch (e) {
+        const why = e instanceof JdFetchError ? e.message : 'Could not read that link.';
+        return res.status(422).json({ error: why + ' Please paste the job description instead.', code: e.code || 'fetch_failed', needPaste: true });
+      }
+    }
     if (!req.file) return res.status(400).json({ error: 'Upload your resume as a PDF.' });
     if (req.file.mimetype !== 'application/pdf' && !req.file.originalname.toLowerCase().endsWith('.pdf')) return res.status(400).json({ error: 'Only PDF files are supported.' });
     if (req.file.buffer.slice(0, 5).toString() !== '%PDF-') return res.status(400).json({ error: 'That file is not a valid PDF.' });
-    if (jd.length < 80) return res.status(400).json({ error: 'Paste the full job description (at least a few lines).' });
+    if (jd.length < 80) return res.status(400).json({ error: 'Add the job: paste the description or enter a job link.' });
     if (jd.length > 12000) return res.status(400).json({ error: 'Job description is too long (max 12,000 characters).' });
     if (!llmConfigured()) return res.status(503).json({ error: 'AI is not configured on the server.' });
 
