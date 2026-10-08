@@ -211,10 +211,14 @@ function TailorCard({ d, setD }) {
   const [err, setErr] = useState('');
   const [message, setMessage] = useState('');
   const t = d.tailored;
+  const [additions, setAdditions] = useState(d.tailored?.additions?.map(a => ({ ...a, confirmed: true })) || []);
+  const [selected, setSelected] = useState('');
+  const [evidence, setEvidence] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
   async function make() {
     setErr(''); setMessage(''); setBusy(true);
     try {
-      const tailored = await api(`/analyses/${d._id}/tailor`, { method: 'POST' });
+      const tailored = await api(`/analyses/${d._id}/tailor`, { method: 'POST', body: { additions } });
       setD({ ...d, tailored });
       setMessage('Your improved draft is ready. Review it below, then download.');
     } catch (e) { setErr(e.message); }
@@ -226,21 +230,24 @@ function TailorCard({ d, setD }) {
     setDownloading('');
   }
   return <section className="card improved-card" id="improved-resume" aria-labelledby="improved-title">
-    <span className="eyebrow">Next step</span>
-    <h3 id="improved-title">Turn the review into a new resume</h3>
-    <p>Create a clean, readable resume using only the facts and wording in your uploaded PDF. No added skills, experience or invented numbers.</p>
-    <p className="muted small">This source-only draft improves layout and structure. It does not automatically rewrite your claims or pretend to fill skill gaps.</p>
+    <span className="eyebrow">Resume builder</span>
+    <h2 id="improved-title">Build your improved resume</h2>
+    <p>Create a clean, readable resume from your uploaded PDF and any true details you add below. No invented skills, experience or numbers.</p>
+    <p className="muted small">The draft improves layout and structure while keeping your wording. New details appear only when you type and confirm them yourself.</p>
+    <section className="builder-requirements"><h3>Your resume against this job</h3><p><strong>{d.jobTitle || 'The job description you provided'}</strong></p><p className="muted small">Original review match: {(d.score / 10).toFixed(1)}/10. This uses keyword coverage and the generated fit review. The separate readiness estimate below uses only counted keywords and text-format checks.</p>{d.jdPreview && <details><summary>Job description excerpt</summary><p>{d.jdPreview}</p></details>}<h4>Missing job keywords</h4><p className="muted small">Add evidence only for skills you really have. A missing skill is a gap to learn, not something to pretend you know.</p><div className="requirement-list">{(d.missing || []).map(skill => <div className="requirement-row" key={skill}><span>{skill}</span><button type="button" className="btn ghost" onClick={() => { setSelected(skill); setEvidence(''); setConfirmed(false); }}>{additions.some(a => a.skill === skill) ? 'Edit details' : 'Add true details'}</button></div>)}</div>{!d.missing?.length && <p className="muted">No missing counted job keywords.</p>}
+    {selected && <form className="evidence-form" onSubmit={e => { e.preventDefault(); if (!confirmed || !evidence.trim()) return; setAdditions([...additions.filter(a => a.skill !== selected), { skill: selected, text: evidence.trim(), confirmed: true }]); setSelected(''); setMessage('Detail added to your working draft. Generate or regenerate to update the preview and estimate.'); }}><h4>Your actual evidence for {selected}</h4><label>What did you really do or learn?<textarea required minLength={12} maxLength={600} rows={4} value={evidence} onChange={e => setEvidence(e.target.value)} placeholder="Write a real project, course or work example in your own words." /></label><label className="truth-check"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />This is true and I can support it. Do not add anything beyond this text.</label><div className="row2"><button className="btn">Add to working draft</button><button type="button" className="btn ghost" onClick={() => setSelected('')}>Cancel</button></div></form>}
+    {additions.length > 0 && <section className="draft-additions"><h4>Your added details</h4>{additions.map(a => <div key={a.skill}><p><strong>{a.skill}</strong>: {a.text}</p><button className="link" onClick={() => setAdditions(additions.filter(x => x.skill !== a.skill))}>Remove</button></div>)}<p className="muted small">These are your statements, not facts verified by HireSense. They will be included as Additional details when you generate the resume.</p></section>}</section>
     {!d.canTailor && !t && <p className="muted">The original text is not available for this older analysis. <a href="#/new">Upload your resume and run a new analysis</a> to generate a draft.</p>}
     {d.canTailor && !t && <button className="btn" disabled={busy} onClick={make}>{busy ? 'Creating your resume...' : 'Generate improved resume'}</button>}
     {t && <>
       {!t.sourceOnly && <p className="error">This is an older generated draft. Regenerate a source-only version before using it.</p>}
-      {t.readiness && <section className="readiness-panel" aria-label="ATS readiness estimate"><h4>ATS-readiness estimate</h4><p className="readiness-score">{t.readiness.score === null ? 'Not enough job keywords to score' : `${t.readiness.score}/100`}</p><p className="muted small">{t.readiness.method}</p><p>Job keyword coverage: {t.readiness.keywordCoverage === null ? 'not available' : `${t.readiness.keywordCoverage}%`} · Text-format checks: {t.readiness.formatScore}%</p><ul className="checks">{t.readiness.checks.map((c,i) => <li key={i} className={c.ok ? 'ok' : 'no'}>{c.ok ? 'OK' : 'Check'}: {c.ok ? c.label : c.tip}</li>)}</ul>{t.readiness.missing.length > 0 && <><h4>Still missing from the original</h4><Chips items={t.readiness.missing} kind="bad" /><p className="muted small">These are not added to the draft. Add them yourself only when they are true for you.</p></>}</section>}
+      {t.readiness && <section className="readiness-panel" aria-label="ATS readiness estimate"><h4>ATS-readiness estimate</h4>{t.originalReadiness && <p className="muted small">Original readiness: {t.originalReadiness.score === null ? 'not available' : `${t.originalReadiness.score}/100`} · Updated draft:</p>}<p className="readiness-score">{t.readiness.score === null ? 'Not enough job keywords to score' : `${t.readiness.score}/100`}</p><p className="muted small">{t.readiness.method}</p><p>Job keyword coverage: {t.readiness.keywordCoverage === null ? 'not available' : `${t.readiness.keywordCoverage}%`} · Text-format checks: {t.readiness.formatScore}%</p><ul className="checks">{t.readiness.checks.map((c,i) => <li key={i} className={c.ok ? 'ok' : 'no'}>{c.ok ? 'OK' : 'Check'}: {c.ok ? c.label : c.tip}</li>)}</ul>{t.readiness.missing.length > 0 && <><h4>Still missing from the original</h4><Chips items={t.readiness.missing} kind="bad" /><p className="muted small">These are not added to the draft. Add them yourself only when they are true for you.</p></>}</section>}
       <details className="preview-details" open><summary>Review the full resume</summary><ResumePreview t={t} /></details>
       {t.changes?.length > 0 && <><h4>What changed</h4><ul>{t.changes.map((c,i) => <li key={i}>{c}</li>)}</ul></>}
       <p className="muted small">Check the extracted text and contact details before sending. Scanned or unusual PDFs can extract in the wrong order.</p>
       <div className="row2">
         {t.sourceOnly && <><button className="btn" disabled={Boolean(downloading) || busy} onClick={() => dl('pdf')}>{downloading === 'pdf' ? 'Preparing PDF...' : 'Download PDF'}</button><button className="btn ghost" disabled={Boolean(downloading) || busy} onClick={() => dl('docx')}>{downloading === 'docx' ? 'Preparing DOCX...' : 'Download DOCX (editable)'}</button></>}
-        {d.canTailor && <button className="btn ghost" disabled={busy || Boolean(downloading)} onClick={make}>{busy ? 'Creating...' : 'Regenerate from original'}</button>}
+        {d.canTailor && <button className="btn ghost" disabled={busy || Boolean(downloading)} onClick={make}>{busy ? 'Creating...' : 'Update preview and score'}</button>}
       </div>
     </>}
     {message && <p className="okmsg" role="status">{message}</p>}
@@ -291,7 +298,7 @@ function Result({ id }) {
         <h3>Top fixes</h3>
         <p className="muted small">Review suggestions are ideas, not verified facts. Do not add missing skills or achievements unless they are true for you.</p><ol>{(r.top_fixes || []).map((t, i) => <li key={i}>{t}</li>)}</ol>
       </div>
-      <TailorCard d={d} setD={setD} />
+      <section className="card improved-card"><span className="eyebrow">Next step</span><h3>Build a resume from this review</h3><p>See missing job keywords, add only true details, review the new draft and compare the readiness estimate before downloading.</p><a className="btn" href={`#/resume/${d._id}`}>Open resume builder</a></section>
       <div className="grid2">
         <div className="card"><h3>Missing keywords</h3><Chips items={d.missing} kind="bad" /></div>
         <div className="card"><h3>Keywords you already have</h3><Chips items={d.matched} kind="good" /></div>
@@ -325,6 +332,13 @@ function Result({ id }) {
       <p><a href="#/new" className="btn">Analyze another</a></p>
     </div>
   );
+}
+
+function ResumeBuilder({ id }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { api(`/analyses/${id}`).then(setD).catch(e => setErr(e.message)); }, [id]);
+  return <div className="stack"><p><a href={`#/result/${id}`}>← Back to analysis</a></p>{err ? <section className="card"><p className="error">{err}</p></section> : !d ? <section className="card">Loading your resume builder...</section> : <TailorCard d={d} setD={setD} />}</div>;
 }
 
 function History() {
@@ -370,6 +384,7 @@ export default function App() {
   if (!ready) return <div className="wrap"><p>Loading...</p></div>;
   let page;
   if (!user) page = <Landing onAuth={(u) => { setUser(u); go('/new'); }} />;
+  else if (route.startsWith('/resume/')) page = <ResumeBuilder id={route.split('/')[2]} />;
   else if (route.startsWith('/result/')) page = <Result id={route.split('/')[2]} />;
   else if (route === '/history') page = <History />;
   else page = <Analyze />;
