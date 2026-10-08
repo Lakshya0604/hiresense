@@ -289,7 +289,7 @@ function Result({ id }) {
       </div>
       <div className="card">
         <h3>Top fixes</h3>
-        <ol>{(r.top_fixes || []).map((t, i) => <li key={i}>{t}</li>)}</ol>
+        <p className="muted small">Review suggestions are ideas, not verified facts. Do not add missing skills or achievements unless they are true for you.</p><ol>{(r.top_fixes || []).map((t, i) => <li key={i}>{t}</li>)}</ol>
       </div>
       <TailorCard d={d} setD={setD} />
       <div className="grid2">
@@ -303,10 +303,10 @@ function Result({ id }) {
           <div className="bullet" key={i}>
             <p className="was">{b.original}</p>
             <p className="why">{b.problem}</p>
-            <p className="now">{b.better}</p>
+            <p className="now">Edit this line using only your real work. Add a tool, team size or result only if you can verify it. The source-only draft keeps the original wording.</p>
           </div>
         ))}
-        <p className="muted small">Replace [X] with a real number. Only use rewrites that are true for you.</p>
+        <p className="muted small">Suggestions identify areas to improve, not facts you should add. Do not invent a number, skill or achievement.</p>
       </div>
       <div className="grid2">
         <div className="card">
