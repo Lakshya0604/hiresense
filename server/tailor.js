@@ -55,7 +55,7 @@ export function sanitizeTailored(raw, resumeText) {
 import { matchKeywords, formattingChecks } from './keywords.js';
 // Source-only export: every candidate statement is copied from the uploaded text.
 // Job descriptions and review suggestions never enter the generated resume.
-export function buildImprovedResume(resumeText, jdText = '') {
+export function buildImprovedResume(resumeText, jdText = '', additions = []) {
   const lines = String(resumeText || '').replace(/\u0000/g, '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   if (!lines.length) throw new Error('No readable resume text');
   const headings = /^(?:professional summary|summary|profile|objective|technical skills|skills|experience|work experience|employment|projects|personal projects|education|certifications|achievements|awards|languages|interests|publications|volunteer experience|additional information|resume details)\s*:?$/i;
@@ -77,11 +77,14 @@ export function buildImprovedResume(resumeText, jdText = '') {
     });
     if (!sections[0].items.length) sections.shift();
   }
+  const added = (Array.isArray(additions) ? additions : []).filter(a => a?.confirmed === true && typeof a.text === 'string' && a.text.trim().length >= 12).slice(0, 12).map(a => ({ skill: str(a.skill, 60), text: str(a.text, 600) }));
+  if (added.length) sections.push({ heading: 'Additional details', items: added.map(a => a.text) });
+  const updatedText = lines.join('\n') + '\n' + added.map(a => a.text).join('\n');
   return {
     name: lines[0], contact, summary: '', skills: [], experience: [], projects: [], education: [],
     other: sections,
-    changes: ['Created a clean, single-column layout from your uploaded resume.', 'Kept your original facts and wording. No job-description skills, invented achievements or placeholders were added.', 'Review the full draft below before downloading. Missing experience must be earned, not filled in by a generator.'],
-    sourceOnly: true, removedUnsupported: 0, readiness: assessReadiness(lines.join('\n'), jdText)
+    changes: [...added.map(a => 'Added your confirmed detail: ' + a.text), 'Created a clean, single-column layout from your uploaded resume.', 'Kept the original wording. Missing job keywords were not added automatically.', 'Review the full draft below before downloading. Missing experience must be earned, not filled in by a generator.'],
+    sourceOnly: true, removedUnsupported: 0, additions: added, originalReadiness: assessReadiness(lines.join('\n'), jdText), readiness: assessReadiness(updatedText, jdText)
   };
 }
 
