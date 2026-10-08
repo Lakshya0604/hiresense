@@ -32,6 +32,7 @@ function AuthForm({ onAuth }) {
   return (
     <div className="card auth">
       <h2>{mode === 'login' ? 'Log in' : 'Create your account'}</h2>
+      <p className="auth-note">{mode === 'login' ? 'Your next application starts here.' : 'A workspace for your next opportunity.'}</p>
       <form onSubmit={submit}>
         {mode === 'signup' && <label>Name<input value={f.name} onChange={set('name')} autoComplete="name" /></label>}
         <label>Email<input type="email" required value={f.email} onChange={set('email')} autoComplete="email" /></label>
@@ -65,13 +66,15 @@ function Landing({ onAuth }) {
   return (
     <div className="hero">
       <div>
-        <h1>Will your resume get past the first screen?</h1>
-        <p className="lead">Upload your resume PDF, paste a job description, and get a match score with the exact keywords you are missing, the weak bullets to rewrite, and formatting fixes.</p>
+        <span className="eyebrow">Your resume. The right evidence.</span>
+        <h1>Make your experience<br /><em>fit the opportunity.</em></h1>
+        <p className="lead">Compare your resume with a real job description. Find missing keywords, sharpen your bullets, and see what to improve before you apply.</p>
         <ul className="points">
           <li>Keyword match counted in code, so it is checkable</li>
-          <li>AI review that only uses what is in your resume</li>
+          <li>Suggested edits grounded in your own experience</li>
           <li>Your history is saved to your account</li>
         </ul>
+        <div className="step-strip" aria-label="How it works"><span>01 Upload a PDF</span><span>02 Add the job</span><span>03 Review the match</span></div>
       </div>
       <AuthForm onAuth={onAuth} />
     </div>
