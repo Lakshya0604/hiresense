@@ -177,7 +177,7 @@ app.post('/api/analyses/:id/tailor', auth, tailorLimiter, async (req, res) => {
     if (!doc.resumeText) return res.status(409).json({ error: 'This analysis was made before tailoring existed. Run a new analysis, then tailor from its result.' });
     let tailored;
     try {
-      tailored = buildImprovedResume(doc.resumeText, doc.jdText);
+      tailored = buildImprovedResume(doc.resumeText, doc.jdText, req.body?.additions);
     } catch (e) {
       console.error('tailor failed:', e.message);
       return res.status(502).json({ error: 'Could not create the resume from the saved text. Please run a new analysis.' });
