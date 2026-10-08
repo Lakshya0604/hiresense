@@ -49,6 +49,18 @@ function AuthForm({ onAuth }) {
   );
 }
 
+const resumeGuides = [
+  ['resume-job-description-match', 'Match a resume to a job'],
+  ['resume-keywords', 'Use keywords honestly'],
+  ['resume-pdf-checklist', 'PDF upload checklist'],
+  ['tailor-resume', 'Tailor without inventing experience'],
+  ['job-posting-links', 'Use a job posting link'],
+  ['match-score-explained', 'Understand your match score']
+];
+function PublicGuideLinks() {
+  return <section className="stack" style={{ marginTop: 32 }}><h2>Resume and job-match guides</h2><p className="muted">Read these without creating an account. Learn what to check before you upload, and how to use results without overstating your experience.</p><div className="grid2">{resumeGuides.map(([slug, name]) => <a className="card" key={slug} href={'/guides/' + slug + '/'}>{name}</a>)}</div><section className="card"><h2>Common questions</h2><details><summary>Is this a certified ATS score?</summary><p>No. It is a custom estimate based on keyword coverage and a generated fit review. It does not predict whether an employer will interview you.</p></details><details><summary>Do I need an account?</summary><p>Public guides need no account. Analysis and saved history require login.</p></details><details><summary>What is stored?</summary><p>The uploaded PDF is not retained. Extracted resume text, job text and results are saved to your account for tailoring and history. Analyses can be deleted from History.</p></details></section></section>;
+}
+
 function Landing({ onAuth }) {
   return (
     <div className="hero">
@@ -98,7 +110,7 @@ function ScoreScale({ score }) {
       </div>
       <div className="scale-ticks">{[0, 3, 5, 7.5, 9, 10].map((t) => <span key={t} style={{ left: `${t * 10}%` }}>{t}</span>)}</div>
       <p className="small"><strong style={{ color: band.color }}>{score}% ({out10.toFixed(1)}/10) - {band.label}.</strong> {band.tip}</p>
-      <p className="muted small">Bands: under 3 poor, 3 to 5 weak, 5 to 7.5 partial, 7.5 to 9 strong, 9+ excellent. Resumes at 7.5/10 or more usually pass a first screen.</p>
+      <p className="muted small">Bands: under 3 poor, 3 to 5 weak, 5 to 7.5 partial, 7.5 to 9 strong, 9+ excellent. These bands are guidance only. No score guarantees passing an employer's first screen.</p>
     </div>
   );
 }
@@ -330,6 +342,11 @@ export default function App() {
     if (!getToken()) return;
     api('/auth/me').then((d) => setUser(d.user)).catch(() => setToken(null)).finally(() => setReady(true));
   }, []);
+  useEffect(() => {
+    const privateRoute = route !== '/' || Boolean(user);
+    document.title = privateRoute ? 'Your workspace | HireSense' : 'HireSense - Resume Match Score and Job Description Review';
+    document.querySelector('meta[name="robots"]')?.setAttribute('content', privateRoute ? 'noindex,follow' : 'index,follow');
+  }, [route, user]);
   function logout() { setToken(null); setUser(null); go('/'); }
   if (!ready) return <div className="wrap"><p>Loading...</p></div>;
   let page;
@@ -341,6 +358,7 @@ export default function App() {
     <>
       <header className="nav">
         <a className="brand" href="#/">Hire<span>Sense</span></a>
+        {!user && <nav><a href="/guides/">Resume guides</a></nav>}
         {user && (
           <nav>
             <a href="#/new">New</a>
@@ -349,7 +367,7 @@ export default function App() {
           </nav>
         )}
       </header>
-      <main className="wrap">{page}</main>
+      <main className="wrap">{page}{!user && <PublicGuideLinks />}</main>
       <footer className="foot">HireSense - built by Lakshya Yadav. Your resume PDF is not kept. The extracted text and results are saved to your account so you can tailor later, and you can delete any analysis from History.</footer>
     </>
   );
