@@ -192,44 +192,60 @@ function Chips({ items, kind }) {
   return <div className="chips">{items.map((t) => <span key={t} className={`chip ${kind}`}>{t}</span>)}</div>;
 }
 
+function ResumePreview({ t }) {
+  return <article className="resume-preview" aria-label="Improved resume preview">
+    <h2>{t.name || 'Resume'}</h2>
+    {t.contact?.length > 0 && <p>{t.contact.join(' | ')}</p>}
+    {t.summary && <section><h3>Summary</h3><p>{t.summary}</p></section>}
+    {t.skills?.length > 0 && <section><h3>Skills</h3>{t.skills.map((g,i) => <p key={i}><strong>{g.group ? g.group + ': ' : ''}</strong>{g.items.join(', ')}</p>)}</section>}
+    {t.experience?.length > 0 && <section><h3>Experience</h3>{t.experience.map((e,i) => <div key={i}><h4>{[e.title,e.org,e.dates].filter(Boolean).join(' | ')}</h4><ul>{e.bullets.map((b,j) => <li key={j}>{b}</li>)}</ul></div>)}</section>}
+    {t.projects?.length > 0 && <section><h3>Projects</h3>{t.projects.map((p,i) => <div key={i}><h4>{[p.name,p.tech].filter(Boolean).join(' | ')}</h4><ul>{p.bullets.map((b,j) => <li key={j}>{b}</li>)}</ul></div>)}</section>}
+    {t.education?.length > 0 && <section><h3>Education</h3>{t.education.map((e,i) => <div key={i}><h4>{[e.degree,e.org,e.dates].filter(Boolean).join(' | ')}</h4>{e.details && <p>{e.details}</p>}</div>)}</section>}
+    {(t.other || []).map((o,i) => <section key={i}><h3>{o.heading}</h3>{o.items.map((v,j) => <p key={j}>{v}</p>)}</section>)}
+  </article>;
+}
+
 function TailorCard({ d, setD }) {
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState('');
   const [err, setErr] = useState('');
+  const [message, setMessage] = useState('');
   const t = d.tailored;
   async function make() {
-    setErr(''); setBusy(true);
+    setErr(''); setMessage(''); setBusy(true);
     try {
       const tailored = await api(`/analyses/${d._id}/tailor`, { method: 'POST' });
       setD({ ...d, tailored });
+      setMessage('Your improved draft is ready. Review it below, then download.');
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
   async function dl(ext) {
-    setErr('');
-    try { await download(`/analyses/${d._id}/tailored?format=${ext}`, `tailored_resume.${ext}`); } catch (e) { setErr(e.message); }
+    setErr(''); setMessage(''); setDownloading(ext);
+    try { await download(`/analyses/${d._id}/tailored?format=${ext}`, `improved_resume.${ext}`); setMessage(`${ext.toUpperCase()} download started.`); } catch (e) { setErr(e.message); }
+    setDownloading('');
   }
-  return (
-    <div className="card">
-      <h3>Tailored resume for this job</h3>
-      <p className="muted small">The AI rewrites your resume for this job using only what is already in it: it rewords, reorders and puts the relevant parts first. It never adds skills you did not list.</p>
-      {!d.canTailor && !t && <p className="muted">This analysis was made before tailoring existed. Run a new analysis to use it.</p>}
-      {d.canTailor && !t && <button className="btn" disabled={busy} onClick={make}>{busy ? 'Tailoring... 15 to 30 seconds' : 'Tailor my resume to this job'}</button>}
-      {t && (
-        <>
-          <div className="row2">
-            <button className="btn" onClick={() => dl('pdf')}>Download PDF</button>
-            <button className="btn ghost" onClick={() => dl('docx')}>Download DOCX (editable)</button>
-            {d.canTailor && <button className="btn ghost" disabled={busy} onClick={make}>{busy ? 'Redoing...' : 'Redo'}</button>}
-          </div>
-          {t.summary && <><h4>New summary</h4><p>{t.summary}</p></>}
-          {t.changes?.length > 0 && <><h4>What changed</h4><ul>{t.changes.map((c, i) => <li key={i}>{c}</li>)}</ul></>}
-          {t.removedUnsupported > 0 && <p className="muted small">{t.removedUnsupported} item(s) the AI tried to add that were not in your original resume were removed automatically.</p>}
-          <p className="muted small">Read the file before sending it. Everything in it should be true for you.</p>
-        </>
-      )}
-      {err && <p className="error">{err}</p>}
-    </div>
-  );
+  return <section className="card improved-card" id="improved-resume" aria-labelledby="improved-title">
+    <span className="eyebrow">Next step</span>
+    <h3 id="improved-title">Turn the review into a new resume</h3>
+    <p>Create a clean, readable resume using only the facts and wording in your uploaded PDF. No added skills, experience or invented numbers.</p>
+    <p className="muted small">This source-only draft improves layout and structure. It does not automatically rewrite your claims or pretend to fill skill gaps.</p>
+    {!d.canTailor && !t && <p className="muted">The original text is not available for this older analysis. <a href="#/new">Upload your resume and run a new analysis</a> to generate a draft.</p>}
+    {d.canTailor && !t && <button className="btn" disabled={busy} onClick={make}>{busy ? 'Creating your resume...' : 'Generate improved resume'}</button>}
+    {t && <>
+      {!t.sourceOnly && <p className="error">This is an older generated draft. Regenerate a source-only version before using it.</p>}
+      {t.readiness && <section className="readiness-panel" aria-label="ATS readiness estimate"><h4>ATS-readiness estimate</h4><p className="readiness-score">{t.readiness.score === null ? 'Not enough job keywords to score' : `${t.readiness.score}/100`}</p><p className="muted small">{t.readiness.method}</p><p>Job keyword coverage: {t.readiness.keywordCoverage === null ? 'not available' : `${t.readiness.keywordCoverage}%`} · Text-format checks: {t.readiness.formatScore}%</p><ul className="checks">{t.readiness.checks.map((c,i) => <li key={i} className={c.ok ? 'ok' : 'no'}>{c.ok ? 'OK' : 'Check'}: {c.ok ? c.label : c.tip}</li>)}</ul>{t.readiness.missing.length > 0 && <><h4>Still missing from the original</h4><Chips items={t.readiness.missing} kind="bad" /><p className="muted small">These are not added to the draft. Add them yourself only when they are true for you.</p></>}</section>}
+      <details className="preview-details" open><summary>Review the full resume</summary><ResumePreview t={t} /></details>
+      {t.changes?.length > 0 && <><h4>What changed</h4><ul>{t.changes.map((c,i) => <li key={i}>{c}</li>)}</ul></>}
+      <p className="muted small">Check the extracted text and contact details before sending. Scanned or unusual PDFs can extract in the wrong order.</p>
+      <div className="row2">
+        {t.sourceOnly && <><button className="btn" disabled={Boolean(downloading) || busy} onClick={() => dl('pdf')}>{downloading === 'pdf' ? 'Preparing PDF...' : 'Download PDF'}</button><button className="btn ghost" disabled={Boolean(downloading) || busy} onClick={() => dl('docx')}>{downloading === 'docx' ? 'Preparing DOCX...' : 'Download DOCX (editable)'}</button></>}
+        {d.canTailor && <button className="btn ghost" disabled={busy || Boolean(downloading)} onClick={make}>{busy ? 'Creating...' : 'Regenerate from original'}</button>}
+      </div>
+    </>}
+    {message && <p className="okmsg" role="status">{message}</p>}
+    {err && <p className="error" role="alert">{err}</p>}
+  </section>;
 }
 
 function ResourcesCard({ items }) {
@@ -275,6 +291,7 @@ function Result({ id }) {
         <h3>Top fixes</h3>
         <ol>{(r.top_fixes || []).map((t, i) => <li key={i}>{t}</li>)}</ol>
       </div>
+      <TailorCard d={d} setD={setD} />
       <div className="grid2">
         <div className="card"><h3>Missing keywords</h3><Chips items={d.missing} kind="bad" /></div>
         <div className="card"><h3>Keywords you already have</h3><Chips items={d.matched} kind="good" /></div>
@@ -304,7 +321,6 @@ function Result({ id }) {
           {(r.formatting || []).map((t, i) => <p key={i} className="small">- {t}</p>)}
         </div>
       </div>
-      <TailorCard d={d} setD={setD} />
       <ResourcesCard items={d.resources} />
       <p><a href="#/new" className="btn">Analyze another</a></p>
     </div>
