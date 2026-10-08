@@ -62,3 +62,14 @@ test('source-only resume exports readable PDF and editable DOCX', async () => {
   assert.equal(pdf.subarray(0,5).toString(), '%PDF-');
   assert.equal(docx.subarray(0,2).toString(), 'PK');
 });
+
+test('added details require explicit confirmation and improve only real keywords', () => {
+  const resume = 'Jane Doe\nSkills\nReact\nEducation\nBachelor of Science';
+  const jd = 'React JavaScript Docker AWS web developer';
+  const ignored = buildImprovedResume(resume, jd, [{ skill: 'Docker', text: 'Used Docker for a real course project.' }]);
+  assert.equal(ignored.additions.length, 0);
+  const added = buildImprovedResume(resume, jd, [{ skill: 'Docker', text: 'Used Docker for a real course project.', confirmed: true }]);
+  assert.equal(added.additions.length, 1);
+  assert.ok(added.readiness.score > added.originalReadiness.score);
+  assert.ok(added.readiness.missing.includes('aws'));
+});
