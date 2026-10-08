@@ -161,7 +161,7 @@ app.get('/api/analyses', auth, async (req, res) => {
 
 app.get('/api/analyses/:id', auth, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Not found.' });
-  const doc = await Analysis.findOne({ _id: req.params.id, user: req.userId }).select('+tailored +resumeText');
+  const doc = await Analysis.findOne({ _id: req.params.id, user: req.userId }).select('+tailored +resumeText +jdText');
   if (!doc) return res.status(404).json({ error: 'Not found.' });
   const out = doc.toObject();
   out.canTailor = Boolean(out.resumeText);
