@@ -40,3 +40,25 @@ test('html to text keeps list items and drops scripts', () => {
   assert.match(t, /Node & SQL/);
   assert.doesNotMatch(t, /x=1/);
 });
+
+import { buildImprovedResume, assessReadiness } from './tailor.js';
+import { toDocx, toPdf } from './export.js';
+test('source-only resume preserves text and never imports job requirements', () => {
+  const original = 'Jane Doe\njane@example.com\nSkills\nReact, JavaScript\nProjects\nBuilt a chat app for 200 students.\nEducation\nBachelor of Science, Example College, 2023';
+  const out = buildImprovedResume(original, 'Docker Kubernetes AWS React JavaScript developer.');
+  const candidateText = [out.name, ...out.other.flatMap(s => s.items)].join('\n');
+  for (const line of candidateText.split('\n')) assert.ok(original.includes(line));
+  assert.ok(out.sourceOnly);
+  assert.doesNotMatch(candidateText, /Docker|Kubernetes|AWS/);
+  assert.ok(out.readiness.score < 100);
+  assert.ok(out.readiness.missing.includes('docker'));
+});
+test('readiness is transparent and unavailable without job keywords', () => {
+  assert.equal(assessReadiness('Jane Doe', '').score, null);
+});
+test('source-only resume exports readable PDF and editable DOCX', async () => {
+  const r = buildImprovedResume('Jane Doe\njane@example.com\nSkills\nJavaScript and React\nProjects\nBuilt a chat app.');
+  const pdf = await toPdf(r), docx = await toDocx(r);
+  assert.equal(pdf.subarray(0,5).toString(), '%PDF-');
+  assert.equal(docx.subarray(0,2).toString(), 'PK');
+});
