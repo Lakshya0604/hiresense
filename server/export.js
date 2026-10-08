@@ -3,7 +3,7 @@ import PDFDocument from 'pdfkit';
 
 const heading = (t) => new Paragraph({ spacing: { before: 200, after: 60 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '888888', space: 1 } }, children: [new TextRun({ text: t.toUpperCase(), bold: true, size: 22 })] });
 const line = (runs, opts = {}) => new Paragraph({ spacing: { after: 40 }, ...opts, children: runs });
-const bullet = (t) => new Paragraph({ bullet: { level: 0 }, spacing: { after: 20 }, children: [new TextRun({ text: t, size: 21 })] });
+const bullet = (t) => new Paragraph({ bullet: { level: 0 }, spacing: { after: 20 }, children: [new TextRun({ text: t.replace(/^[•\-*]\s+/, ''), size: 21 })] });
 
 export async function toDocx(r) {
   const c = [];
@@ -32,7 +32,7 @@ export function toPdf(r) {
     const W = doc.page.width - 92;
     const head = (t) => { doc.moveDown(0.5); doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000').text(latin(t.toUpperCase()), { width: W }); const y = doc.y + 1; doc.moveTo(46, y).lineTo(46 + W, y).lineWidth(0.6).strokeColor('#888').stroke(); doc.moveDown(0.3); };
     const row = (bold, rest) => { doc.font('Helvetica-Bold').fontSize(10).fillColor('#000').text(latin(bold), { continued: Boolean(rest), width: W }); if (rest) doc.font('Helvetica').text(latin(rest)); };
-    const bul = (t) => { doc.font('Helvetica').fontSize(9.8).fillColor('#111').text('-  ' + latin(t), { indent: 8, width: W, lineGap: 1 }); };
+    const bul = (t) => { doc.font('Helvetica').fontSize(9.8).fillColor('#111').text('-  ' + latin(t.replace(/^[•\-*]\s+/, '')), { indent: 8, width: W, lineGap: 1 }); };
     doc.font('Helvetica-Bold').fontSize(18).text(latin(r.name || 'Resume'), { align: 'center', width: W });
     if (r.contact.length) doc.font('Helvetica').fontSize(9).fillColor('#333').text(latin(r.contact.join('  |  ')), { align: 'center', width: W });
     if (r.summary) { head('Summary'); doc.font('Helvetica').fontSize(9.8).fillColor('#111').text(latin(r.summary), { width: W, lineGap: 1 }); }
