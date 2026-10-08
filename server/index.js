@@ -11,10 +11,10 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { User, Analysis } from './models.js';
 import { matchKeywords, formattingChecks } from './keywords.js';
-import { reviewResume, tailorResume, llmConfigured } from './llm.js';
+import { reviewResume, llmConfigured } from './llm.js';
 import { fetchJobPosting, JdFetchError } from './jdfetch.js';
 import { resourcesFor } from './resources.js';
-import { sanitizeTailored } from './tailor.js';
+import { buildImprovedResume } from './tailor.js';
 import { toDocx, toPdf } from './export.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -174,13 +174,13 @@ app.post('/api/analyses/:id/tailor', auth, tailorLimiter, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Not found.' });
     const doc = await Analysis.findOne({ _id: req.params.id, user: req.userId }).select('+jdText +resumeText');
     if (!doc) return res.status(404).json({ error: 'Not found.' });
-    if (!doc.resumeText || !doc.jdText) return res.status(409).json({ error: 'This analysis was made before tailoring existed. Run a new analysis, then tailor from its result.' });
+    if (!doc.resumeText) return res.status(409).json({ error: 'This analysis was made before tailoring existed. Run a new analysis, then tailor from its result.' });
     let tailored;
     try {
-      tailored = sanitizeTailored(await tailorResume({ resumeText: doc.resumeText, jd: doc.jdText }), doc.resumeText);
+      tailored = buildImprovedResume(doc.resumeText, doc.jdText);
     } catch (e) {
       console.error('tailor failed:', e.message);
-      return res.status(502).json({ error: 'The AI could not tailor the resume. Please try again in a minute.' });
+      return res.status(502).json({ error: 'Could not create the resume from the saved text. Please run a new analysis.' });
     }
     doc.tailored = tailored;
     doc.markModified('tailored');
@@ -197,6 +197,7 @@ app.get('/api/analyses/:id/tailored', auth, async (req, res) => {
   const doc = await Analysis.findOne({ _id: req.params.id, user: req.userId }).select('+tailored');
   if (!doc) return res.status(404).json({ error: 'Not found.' });
   if (!doc.tailored) return res.status(404).json({ error: 'No tailored resume yet.' });
+  if (!doc.tailored.sourceOnly) return res.status(409).json({ error: 'Regenerate a source-only resume before downloading this older draft.' });
   const fmt = req.query.format;
   const base = (doc.tailored.name || 'resume').replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') + '_tailored';
   try {
