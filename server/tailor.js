@@ -58,18 +58,27 @@ import { matchKeywords, formattingChecks } from './keywords.js';
 export function buildImprovedResume(resumeText, jdText = '') {
   const lines = String(resumeText || '').replace(/\u0000/g, '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   if (!lines.length) throw new Error('No readable resume text');
-  const headings = /^(?:professional summary|summary|profile|objective|technical skills|skills|experience|work experience|employment|projects|personal projects|education|certifications|achievements|awards|languages|interests|publications|volunteer experience)\s*:?$/i;
+  const headings = /^(?:professional summary|summary|profile|objective|technical skills|skills|experience|work experience|employment|projects|personal projects|education|certifications|achievements|awards|languages|interests|publications|volunteer experience|additional information|resume details)\s*:?$/i;
   const sections = [];
   let current = { heading: 'Resume details', items: [] };
   for (const line of lines.slice(1)) {
-    if (headings.test(line)) {
+    const headingLine = line.replace(/^[•\-*]\s*/, '');
+    if (headings.test(headingLine)) {
       if (current.items.length) sections.push(current);
-      current = { heading: line.replace(/:$/, ''), items: [] };
+      current = { heading: headingLine.replace(/:$/, ''), items: [] };
     } else current.items.push(line);
   }
   if (current.items.length) sections.push(current);
+  const contact = [];
+  if (sections[0]?.heading === 'Resume details') {
+    sections[0].items = sections[0].items.filter(line => {
+      if (/@|linkedin\.com|github\.com|\+?\d[\d\s().-]{8,}\d/.test(line)) { contact.push(line); return false; }
+      return true;
+    });
+    if (!sections[0].items.length) sections.shift();
+  }
   return {
-    name: lines[0], contact: [], summary: '', skills: [], experience: [], projects: [], education: [],
+    name: lines[0], contact, summary: '', skills: [], experience: [], projects: [], education: [],
     other: sections,
     changes: ['Created a clean, single-column layout from your uploaded resume.', 'Kept your original facts and wording. No job-description skills, invented achievements or placeholders were added.', 'Review the full draft below before downloading. Missing experience must be earned, not filled in by a generator.'],
     sourceOnly: true, removedUnsupported: 0, readiness: assessReadiness(lines.join('\n'), jdText)
