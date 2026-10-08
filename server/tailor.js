@@ -70,7 +70,7 @@ export function buildImprovedResume(resumeText, jdText = '') {
   }
   if (current.items.length) sections.push(current);
   const contact = [];
-  if (sections[0]?.heading === 'Resume details') {
+  if (sections[0]?.heading.toLowerCase() === 'resume details') {
     sections[0].items = sections[0].items.filter(line => {
       if (/@|linkedin\.com|github\.com|\+?\d[\d\s().-]{8,}\d/.test(line)) { contact.push(line); return false; }
       return true;
