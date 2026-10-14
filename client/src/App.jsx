@@ -19,16 +19,36 @@ function AuthForm({ onAuth }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const [sent, setSent] = useState(false);
   async function submit(e) {
     e.preventDefault();
     setErr(''); setBusy(true);
     try {
-      const data = await api(`/auth/${mode}`, { method: 'POST', body: f });
-      setToken(data.token);
-      onAuth(data.user);
+      if (mode === 'forgot') {
+        await api('/auth/forgot', { method: 'POST', body: { email: f.email } });
+        setSent(true);
+      } else {
+        const data = await api(`/auth/${mode}`, { method: 'POST', body: f });
+        setToken(data.token);
+        onAuth(data.user);
+      }
     } catch (e2) { setErr(e2.message); }
     setBusy(false);
   }
+  if (mode === 'forgot') return (
+    <div className="card auth">
+      <h2>Reset your password</h2>
+      <p className="auth-note">Enter your account email. We will send a link to choose a new password.</p>
+      {sent ? <p className="muted">If an account exists for that email, a reset link is on its way. It works for 30 minutes. Check spam too.</p> : (
+        <form onSubmit={submit}>
+          <label>Email<input type="email" required value={f.email} onChange={set('email')} autoComplete="email" /></label>
+          {err && <p className="error">{err}</p>}
+          <button className="btn" disabled={busy}>{busy ? 'Please wait...' : 'Send reset link'}</button>
+        </form>
+      )}
+      <p className="muted"><a href="#/" onClick={(e) => { e.preventDefault(); setMode('login'); setErr(''); setSent(false); }}>Back to log in</a></p>
+    </div>
+  );
   return (
     <div className="card auth">
       <h2>{mode === 'login' ? 'Log in' : 'Create your account'}</h2>
@@ -40,12 +60,41 @@ function AuthForm({ onAuth }) {
         {err && <p className="error">{err}</p>}
         <button className="btn" disabled={busy}>{busy ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Sign up'}</button>
       </form>
+      {mode === 'login' && <p className="muted"><a href="#/" onClick={(e) => { e.preventDefault(); setMode('forgot'); setErr(''); }}>Forgot password?</a></p>}
       <p className="muted">
         {mode === 'login' ? 'New here? ' : 'Already have an account? '}
         <a href="#/" onClick={(e) => { e.preventDefault(); setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); }}>
           {mode === 'login' ? 'Create an account' : 'Log in'}
         </a>
       </p>
+    </div>
+  );
+}
+
+function ResetForm({ token, onAuth }) {
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(e) {
+    e.preventDefault();
+    setErr(''); setBusy(true);
+    try {
+      const data = await api('/auth/reset', { method: 'POST', body: { token, password } });
+      setToken(data.token);
+      onAuth(data.user);
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+  return (
+    <div className="card auth" style={{ margin: '48px auto' }}>
+      <h2>Choose a new password</h2>
+      {token ? (
+        <form onSubmit={submit}>
+          <label>New password<input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="At least 8 characters" /></label>
+          {err && <p className="error">{err}</p>}
+          <button className="btn" disabled={busy}>{busy ? 'Please wait...' : 'Save new password'}</button>
+        </form>
+      ) : <p className="error">This reset link is invalid. Ask for a new one from the log in page.</p>}
     </div>
   );
 }
@@ -385,7 +434,8 @@ export default function App() {
   function logout() { setToken(null); setUser(null); go('/'); }
   if (!ready) return <div className="wrap"><p>Loading...</p></div>;
   let page;
-  if (!user) page = <Landing onAuth={(u) => { setUser(u); go('/new'); }} />;
+  if (route.startsWith('/reset')) page = <ResetForm token={new URLSearchParams(route.split('?')[1] || '').get('token') || ''} onAuth={(u) => { setUser(u); go('/new'); }} />;
+  else if (!user) page = <Landing onAuth={(u) => { setUser(u); go('/new'); }} />;
   else if (route.startsWith('/resume/')) page = <ResumeBuilder id={route.split('/')[2]} />;
   else if (route.startsWith('/result/')) page = <Result id={route.split('/')[2]} />;
   else if (route === '/history') page = <History />;

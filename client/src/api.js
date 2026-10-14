@@ -1,3 +1,4 @@
+const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const KEY = 'hiresense_token';
 export const getToken = () => localStorage.getItem(KEY);
 export const setToken = (t) => (t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY));
@@ -14,7 +15,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   }
   let res;
   try {
-    res = await fetch(`/api${path}`, { method, headers, body: payload });
+    res = await fetch(`${BASE}/api${path}`, { method, headers, body: payload });
   } catch {
     throw new Error('Network error. Check your connection and try again.');
   }
@@ -28,7 +29,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
 }
 
 export async function download(path, filename) {
-  const res = await fetch(`/api${path}`, { headers: { authorization: `Bearer ${getToken()}` } });
+  const res = await fetch(`${BASE}/api${path}`, { headers: { authorization: `Bearer ${getToken()}` } });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'Download failed.');

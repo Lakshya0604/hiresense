@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -18,7 +19,18 @@ import { buildImprovedResume } from './tailor.js';
 import { toDocx, toPdf } from './export.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const { MONGODB_URI, JWT_SECRET } = process.env;
+const { MONGODB_URI, JWT_SECRET, BREVO_API_KEY, MAIL_FROM, MAIL_FROM_NAME = 'HireSense', APP_URL = 'https://hiresense-ly.web.app' } = process.env;
+
+async function sendMail(to, subject, html) {
+  if (!BREVO_API_KEY || !MAIL_FROM) throw new Error('mail not configured');
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ sender: { name: MAIL_FROM_NAME, email: MAIL_FROM }, to: [{ email: to }], subject, htmlContent: html })
+  });
+  if (!r.ok) throw new Error('mail failed ' + r.status);
+}
+const sha256 = (v) => crypto.createHash('sha256').update(v).digest('hex');
 if (!MONGODB_URI || !JWT_SECRET) {
   console.error('MONGODB_URI and JWT_SECRET must be set');
   process.exit(1);
@@ -74,6 +86,45 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const user = await User.findOne({ email: String(email).toLowerCase().trim() });
   if (!user || !(await bcrypt.compare(String(password), user.passwordHash))) return res.status(401).json({ error: 'Wrong email or password.' });
   res.json({ token: sign(user), user: publicUser(user) });
+});
+
+app.post('/api/auth/forgot', authLimiter, async (req, res) => {
+  try {
+    const email = String((req.body || {}).email || '').toLowerCase().trim();
+    const user = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? await User.findOne({ email }) : null;
+    if (user) {
+      const raw = crypto.randomBytes(32).toString('hex');
+      user.resetHash = sha256(raw);
+      user.resetExpires = new Date(Date.now() + 30 * 60 * 1000);
+      await user.save();
+      const link = APP_URL.replace(/\/+$/, '') + '/#/reset?token=' + raw;
+      try {
+        await sendMail(email, 'Reset your HireSense password', '<p>Someone asked to reset the password for your HireSense account.</p><p><a href="' + link + '">Choose a new password</a></p><p style="font-size:13px;color:#555">If the button does not open, copy this address into your browser:<br>' + link + '</p><p>This link works for 30 minutes. If it was not you, ignore this email.</p>');
+      } catch (e) { console.error('reset mail', e.message); }
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Could not process the request.' });
+  }
+});
+
+app.post('/api/auth/reset', authLimiter, async (req, res) => {
+  try {
+    const { token = '', password = '' } = req.body || {};
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    const user = await User.findOne({ resetHash: sha256(token), resetExpires: { $gt: new Date() } });
+    if (!user) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+    user.passwordHash = await bcrypt.hash(password, 10);
+    user.resetHash = undefined;
+    user.resetExpires = undefined;
+    await user.save();
+    res.json({ token: sign(user), user: publicUser(user) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Could not reset the password.' });
+  }
 });
 
 app.get('/api/auth/me', auth, async (req, res) => {
