@@ -281,6 +281,15 @@ app.use((err, _req, res, next) => {
   next(err);
 });
 
+// The frontend moved to Firebase Hosting; this service now only serves the API.
+// Permanently redirect page traffic to the canonical host, preserving path and query.
+const CANONICAL_ORIGIN = 'https://hiresense-ly.web.app';
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  res.redirect(301, CANONICAL_ORIGIN + req.originalUrl);
+});
+
 const dist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(dist)) {
   app.use(express.static(dist));
