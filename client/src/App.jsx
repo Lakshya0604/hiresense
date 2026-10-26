@@ -124,7 +124,7 @@ function Landing({ onAuth }) {
       </div>
       <div id="start" className="start-panel"><div className="workspace-label"><span className="status-dot" /> YOUR APPLICATION WORKSPACE <span aria-hidden="true">↗</span></div><AuthForm onAuth={onAuth} /><p className="workspace-caption">Your story stays yours. Every edit needs your review.</p></div>
     </div>
-    <div className="feature-grid" aria-label="What you can do"><article className="feature-card"><span className="feature-icon" aria-hidden="true">◎</span><span className="feature-kicker">UNDERSTAND THE FIT</span><h2>Less guesswork.<br />More evidence.</h2><p>Compare the job requirements with your resume. See matched and missing keywords, with a custom match estimate.</p><a href="/guides/match-score-explained/">Understand the score <span aria-hidden="true">↗</span></a></article><article className="feature-card"><span className="feature-icon" aria-hidden="true">↗</span><span className="feature-kicker">MAKE HONEST EDITS</span><h2>Better wording.<br />Still your work.</h2><p>Review bullet suggestions, add only skills you can support, and download your tailored resume as PDF or DOCX.</p><a href="/guides/tailor-resume/">Tailor without inventing <span aria-hidden="true">↗</span></a></article><article className="feature-card feature-dark"><span className="feature-icon" aria-hidden="true">⌁</span><span className="feature-kicker">KEEP THE CONTEXT</span><h2>Your applications.<br />One workspace.</h2><p>Return to saved analyses in History. The uploaded PDF is not retained; extracted text and results can be deleted.</p><a href="/guides/resume-pdf-checklist/">Prepare your PDF <span aria-hidden="true">↗</span></a></article></div>
+    <div className="feature-grid" aria-label="What you can do"><article className="feature-card"><span className="feature-icon" aria-hidden="true">◎</span><span className="feature-kicker">UNDERSTAND THE FIT</span><h2>Less guesswork.<br /> More evidence.</h2><p>Compare the job requirements with your resume. See matched and missing keywords, with a custom match estimate.</p><a href="/guides/match-score-explained/">Understand the score <span aria-hidden="true">↗</span></a></article><article className="feature-card"><span className="feature-icon" aria-hidden="true">↗</span><span className="feature-kicker">MAKE HONEST EDITS</span><h2>Better wording.<br /> Still your work.</h2><p>Review bullet suggestions, add only skills you can support, and download your tailored resume as PDF or DOCX.</p><a href="/guides/tailor-resume/">Tailor without inventing <span aria-hidden="true">↗</span></a></article><article className="feature-card feature-dark"><span className="feature-icon" aria-hidden="true">⌁</span><span className="feature-kicker">KEEP THE CONTEXT</span><h2>Your applications.<br /> One workspace.</h2><p>Return to saved analyses in History. The uploaded PDF is not retained; extracted text and results can be deleted.</p><a href="/guides/resume-pdf-checklist/">Prepare your PDF <span aria-hidden="true">↗</span></a></article></div>
   </section>;
 }
 
@@ -440,7 +440,7 @@ export default function App() {
   else page = <Analyze />;
   return (
     <>
-      <a className="skip-link" href="#main-content">Skip to content</a>
+      <a className="skip-link" href="#main-content" onClick={(e) => { e.preventDefault(); const main = document.getElementById('main-content'); main?.focus(); main?.scrollIntoView(); }}>Skip to content</a>
       <header className="nav">
         <a className="brand" href="#/">Hire<span>Sense</span></a>
         {!user && <nav><a href="/guides/">Resume guides</a></nav>}
@@ -452,7 +452,7 @@ export default function App() {
           </nav>
         )}
       </header>
-      <main id="main-content" className="wrap">{page}{!user && <PublicGuideLinks />}</main>
+      <main id="main-content" tabIndex={-1} className="wrap">{page}{!user && <PublicGuideLinks />}</main>
       <footer className="foot">HireSense - built by Lakshya Yadav. Your resume PDF is not kept. The extracted text and results are saved to your account so you can tailor later, and you can delete any analysis from History.</footer>
     </>
   );
