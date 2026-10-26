@@ -112,22 +112,20 @@ function PublicGuideLinks() {
 }
 
 function Landing({ onAuth }) {
-  return (
+  return <section className="landing-shell">
     <div className="hero">
-      <div>
-        <span className="eyebrow">Your resume. The right evidence.</span>
-        <h1>Make your experience<br /><em>fit the opportunity.</em></h1>
-        <p className="lead">Compare your resume with a real job description. Find missing keywords, sharpen your bullets, and see what to improve before you apply.</p>
-        <ul className="points">
-          <li>Keyword match counted in code, so it is checkable</li>
-          <li>Suggested edits grounded in your own experience</li>
-          <li>Your history is saved to your account</li>
-        </ul>
-        <div className="step-strip" aria-label="How it works"><span>01 Upload a PDF</span><span>02 Add the job</span><span>03 Review the match</span></div>
+      <div className="hero-copy">
+        <span className="eyebrow">A clearer path to your next role</span>
+        <h1>Your experience.<br />Your next move.<br /><em>A better match.</em></h1>
+        <p className="lead">A resume job-description matcher that turns a long posting into a clear plan. Check keyword coverage, find the gaps, and tailor your resume with evidence you can stand behind.</p>
+        <div className="hero-actions"><button className="btn" type="button" onClick={() => { document.getElementById('start')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' }); document.querySelector('#start input')?.focus({ preventScroll: true }); }}>Start your resume review <span aria-hidden="true">↗</span></button><a className="text-action" href="/guides/resume-job-description-match/">See how it works <span aria-hidden="true">→</span></a></div>
+        <p className="hero-disclaimer">Free to use · PDF upload · No invented experience</p>
+        <div className="workflow" aria-label="How HireSense works"><div><span>01</span><strong>Bring your resume</strong><small>Upload a readable PDF.</small></div><div><span>02</span><strong>Add the opportunity</strong><small>Paste a job or its public link.</small></div><div><span>03</span><strong>Make it count</strong><small>Review, tailor, then download.</small></div></div>
       </div>
-      <AuthForm onAuth={onAuth} />
+      <div id="start" className="start-panel"><div className="workspace-label"><span className="status-dot" /> YOUR APPLICATION WORKSPACE <span aria-hidden="true">↗</span></div><AuthForm onAuth={onAuth} /><p className="workspace-caption">Your story stays yours. Every edit needs your review.</p></div>
     </div>
-  );
+    <div className="feature-grid" aria-label="What you can do"><article className="feature-card"><span className="feature-icon" aria-hidden="true">◎</span><span className="feature-kicker">UNDERSTAND THE FIT</span><h2>Less guesswork.<br />More evidence.</h2><p>Compare the job requirements with your resume. See matched and missing keywords, with a custom match estimate.</p><a href="/guides/match-score-explained/">Understand the score <span aria-hidden="true">↗</span></a></article><article className="feature-card"><span className="feature-icon" aria-hidden="true">↗</span><span className="feature-kicker">MAKE HONEST EDITS</span><h2>Better wording.<br />Still your work.</h2><p>Review bullet suggestions, add only skills you can support, and download your tailored resume as PDF or DOCX.</p><a href="/guides/tailor-resume/">Tailor without inventing <span aria-hidden="true">↗</span></a></article><article className="feature-card feature-dark"><span className="feature-icon" aria-hidden="true">⌁</span><span className="feature-kicker">KEEP THE CONTEXT</span><h2>Your applications.<br />One workspace.</h2><p>Return to saved analyses in History. The uploaded PDF is not retained; extracted text and results can be deleted.</p><a href="/guides/resume-pdf-checklist/">Prepare your PDF <span aria-hidden="true">↗</span></a></article></div>
+  </section>;
 }
 
 const BANDS = [
@@ -428,7 +426,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     const privateRoute = route !== '/' || Boolean(user);
-    document.title = privateRoute ? 'Your workspace | HireSense' : 'HireSense - Resume Match Score and Job Description Review';
+    document.title = privateRoute ? 'Your workspace | HireSense' : 'Resume Job Description Matcher & Keyword Check | HireSense';
     document.querySelector('meta[name="robots"]')?.setAttribute('content', privateRoute ? 'noindex,follow' : 'index,follow');
   }, [route, user]);
   function logout() { setToken(null); setUser(null); go('/'); }
@@ -442,6 +440,7 @@ export default function App() {
   else page = <Analyze />;
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="nav">
         <a className="brand" href="#/">Hire<span>Sense</span></a>
         {!user && <nav><a href="/guides/">Resume guides</a></nav>}
@@ -453,7 +452,7 @@ export default function App() {
           </nav>
         )}
       </header>
-      <main className="wrap">{page}{!user && <PublicGuideLinks />}</main>
+      <main id="main-content" className="wrap">{page}{!user && <PublicGuideLinks />}</main>
       <footer className="foot">HireSense - built by Lakshya Yadav. Your resume PDF is not kept. The extracted text and results are saved to your account so you can tailor later, and you can delete any analysis from History.</footer>
     </>
   );
