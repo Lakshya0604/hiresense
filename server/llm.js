@@ -1,9 +1,11 @@
+import { groundStrengths } from './keywords.js';
 // Calls Groq (preferred) or Gemini free tier and returns parsed JSON.
 const SYSTEM = `You are a strict, honest resume reviewer and ATS expert. You compare a resume to a job description.
 Rules:
 - Only use facts that are in the resume text. Never invent experience, employers, numbers or skills.
 - Suggested rewrites must stay truthful: reword and add structure, but mark any number the candidate must fill in as [X].
 - Be specific and short. No flattery.
+- Strengths must restate only what the resume literally says. Do not infer deployment, hosting, launch, production use, scale, leadership, results or numbers that the resume does not state. "Built" does not mean "deployed".
 Return ONLY valid JSON with this exact shape:
 {
  "fit_score": <integer 0-100, how well the resume fits THIS job>,
@@ -90,7 +92,7 @@ export async function reviewResume({ resumeText, jd, matched, missing }) {
   return {
     fit_score: Math.max(0, Math.min(100, Math.round(Number(raw.fit_score) || 0))),
     summary: typeof raw.summary === 'string' ? raw.summary : '',
-    strengths: arr(raw.strengths, 4),
+    strengths: groundStrengths(arr(raw.strengths, 8), resumeText).slice(0, 4),
     missing_skills: arr(raw.missing_skills, 10),
     weak_bullets: (Array.isArray(raw.weak_bullets) ? raw.weak_bullets : [])
       .filter((b) => b && typeof b.original === 'string' && typeof b.better === 'string')
