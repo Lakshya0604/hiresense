@@ -115,10 +115,10 @@ function SampleResult() {
   return <section className="sample-result" aria-labelledby="sample-title">
     <div className="sample-head"><span className="eyebrow">EXAMPLE RESULT</span><h2 id="sample-title">What a review looks like</h2><p className="muted">A real run on a fictional fresher resume and a made-up job post. It is an example, not a real person's score and not an ATS result. Your numbers will differ.</p></div>
     <div className="sample-card">
-      <div className="sample-score"><strong>6.6<small>/10</small></strong><span>Partial match</span><em>54% keyword coverage, 78 AI fit rating</em></div>
+      <div className="sample-score"><strong>6.0<small>/10</small></strong><span>Partial match</span><em>54% keyword coverage, 65 AI fit rating</em></div>
       <div className="sample-cols">
         <div><h3>Missing keywords</h3><ul className="chips"><li>ci/cd</li><li>typescript</li><li>agile</li><li>aws</li><li>communication</li><li>docker</li></ul><h3>Keywords it found</h3><ul className="chips ok"><li>rest api</li><li>unit testing</li><li>mongodb</li><li>node.js</li><li>react</li><li>git</li><li>javascript</li></ul></div>
-        <div><h3>Top fixes it suggested</h3><ol><li>Add Docker basics, or a learning statement, to the Skills section.</li><li>Mention communication, for example teamwork you really did.</li><li>Quantify project achievements and clarify your technical contribution.</li></ol></div>
+        <div><h3>Top fixes it suggested</h3><ol><li>Add a brief professional summary that highlights full-stack experience and communication abilities.</li><li>Include start and end dates for the internship and each project.</li><li>Rewrite bullet points to specify technologies, responsibilities, and outcomes.</li><li>Organize the Skills section into sub-categories (Languages, Frameworks, Tools).</li><li>Standardize heading styles, bullet symbols, and spacing.</li></ol><p className="sample-truth">Treat each suggestion as a prompt to check against your real experience. Add only what is true.</p></div>
       </div>
       <p className="sample-note">Sample job: "Junior Full Stack Developer" (fictional). Suggestions are ideas, not facts to add to your resume.</p>
     </div>
