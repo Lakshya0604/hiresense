@@ -111,6 +111,20 @@ function PublicGuideLinks() {
   return <section className="stack" style={{ marginTop: 32 }}><h2>Resume and job-match guides</h2><p className="muted">Read these without creating an account. Learn what to check before you upload, and how to use results without overstating your experience.</p><div className="grid2">{resumeGuides.map(([slug, name]) => <a className="card" key={slug} href={'/guides/' + slug + '/'}>{name}</a>)}</div><section className="card"><h2>Common questions</h2><details><summary>Is this a certified ATS score?</summary><p>No. It is a custom estimate based on keyword coverage and a generated fit review. It does not predict whether an employer will interview you.</p></details><details><summary>Do I need an account?</summary><p>Public guides need no account. Analysis and saved history require login.</p></details><details><summary>What is stored?</summary><p>The uploaded PDF is not retained. Extracted resume text, job text and results are saved to your account for tailoring and history. Analyses can be deleted from History.</p></details></section></section>;
 }
 
+function SampleResult() {
+  return <section className="sample-result" aria-labelledby="sample-title">
+    <div className="sample-head"><span className="eyebrow">EXAMPLE RESULT</span><h2 id="sample-title">What a review looks like</h2><p className="muted">A real run on a fictional fresher resume and a made-up job post. It is an example, not a real person's score and not an ATS result. Your numbers will differ.</p></div>
+    <div className="sample-card">
+      <div className="sample-score"><strong>6.6<small>/10</small></strong><span>Partial match</span><em>54% keyword coverage, 78 AI fit rating</em></div>
+      <div className="sample-cols">
+        <div><h3>Missing keywords</h3><ul className="chips"><li>ci/cd</li><li>typescript</li><li>agile</li><li>aws</li><li>communication</li><li>docker</li></ul><h3>Keywords it found</h3><ul className="chips ok"><li>rest api</li><li>unit testing</li><li>mongodb</li><li>node.js</li><li>react</li><li>git</li><li>javascript</li></ul></div>
+        <div><h3>Top fixes it suggested</h3><ol><li>Add Docker basics, or a learning statement, to the Skills section.</li><li>Mention communication, for example teamwork you really did.</li><li>Quantify project achievements and clarify your technical contribution.</li></ol></div>
+      </div>
+      <p className="sample-note">Sample job: "Junior Full Stack Developer" (fictional). Suggestions are ideas, not facts to add to your resume.</p>
+    </div>
+  </section>;
+}
+
 function Landing({ onAuth }) {
   return <section className="landing-shell">
     <div className="hero">
@@ -126,6 +140,7 @@ function Landing({ onAuth }) {
       <div id="start" className="start-panel"><div className="workspace-label"><span className="status-dot" /> YOUR APPLICATION WORKSPACE <span aria-hidden="true">↗</span></div><AuthForm onAuth={onAuth} /><p className="workspace-caption">Your story stays yours. Every edit needs your review.</p></div>
     </div>
     <div className="feature-grid" aria-label="What you can do"><article className="feature-card"><img className="feature-picture" src="/images/match-illustration.svg" width="260" height="130" alt="" loading="lazy" /><span className="feature-kicker">UNDERSTAND THE FIT</span><h2>Less guesswork.<br /> More evidence.</h2><p>Compare the job requirements with your resume. See matched and missing keywords, with a custom match estimate.</p><a href="/guides/match-score-explained/">Understand the score <span aria-hidden="true">↗</span></a></article><article className="feature-card"><img className="feature-picture" src="/images/edit-illustration.svg" width="260" height="130" alt="" loading="lazy" /><span className="feature-kicker">MAKE HONEST EDITS</span><h2>Better wording.<br /> Still your work.</h2><p>Review bullet suggestions, add only skills you can support, and download your tailored resume as PDF or DOCX.</p><a href="/guides/tailor-resume/">Tailor without inventing <span aria-hidden="true">↗</span></a></article><article className="feature-card feature-dark"><img className="feature-picture" src="/images/workspace-illustration.svg" width="260" height="130" alt="" loading="lazy" /><span className="feature-kicker">KEEP THE CONTEXT</span><h2>Your applications.<br /> One workspace.</h2><p>Return to saved analyses in History. The uploaded PDF is not retained; extracted text and results can be deleted.</p><a href="/guides/resume-pdf-checklist/">Prepare your PDF <span aria-hidden="true">↗</span></a></article></div>
+    <SampleResult />
   </section>;
 }
 
