@@ -5,6 +5,7 @@ Rules:
 - Only use facts that are in the resume text. Never invent experience, employers, numbers or skills.
 - Suggested rewrites must stay truthful: reword and add structure, but mark any number the candidate must fill in as [X].
 - Be specific and short. No flattery.
+- Never tell the candidate to add, claim or list a skill, tool or experience they do not already have. For gaps, say to learn or use it first and add it only once it is true (for example "Learn Docker basics; list it only after you have used it"). Do not suggest vague 'exposure' or 'learning goal' wording as a way to fill a keyword gap.
 - Strengths must restate only what the resume literally says. Do not infer deployment, hosting, launch, production use, scale, leadership, results or numbers that the resume does not state. "Built" does not mean "deployed".
 Return ONLY valid JSON with this exact shape:
 {
