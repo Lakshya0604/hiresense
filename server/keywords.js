@@ -25,9 +25,37 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Equivalent wording a resume may use for a JD term. Only same-meaning phrases or the named tool for the practice.
+const ALIASES = {
+  'rest api': ['rest apis', 'restful', 'restful api', 'restful apis'],
+  'rest apis': ['rest api', 'restful', 'restful api', 'restful apis'],
+  'restful': ['rest api', 'rest apis', 'restful api', 'restful apis'],
+  'unit testing': ['unit tests', 'unit test', 'jest', 'mocha', 'junit', 'pytest', 'vitest'],
+  'integration testing': ['integration tests', 'integration test'],
+  'testing': ['tests', 'test cases', 'jest', 'mocha', 'junit', 'pytest', 'vitest', 'cypress', 'selenium', 'playwright'],
+  'code review': ['code reviews', 'pull request reviews', 'reviewed pull requests', 'review pull requests', 'pr reviews'],
+  'code reviews': ['code review', 'pull request reviews', 'reviewed pull requests', 'review pull requests', 'pr reviews'],
+  'ci/cd': ['ci cd', 'cicd', 'github actions', 'jenkins', 'gitlab ci'],
+  'node': ['node.js'],
+  'node.js': ['nodejs', 'node js'],
+  'react': ['react.js', 'reactjs']
+};
+
+function variants(term) {
+  const out = new Set([term]);
+  for (const a of ALIASES[term] || []) out.add(a);
+  for (const v of [...out]) {
+    out.add(v + 's');
+    if (v.length > 5 && v.endsWith('s') && !v.endsWith('ss')) out.add(v.slice(0, -1));
+  }
+  return [...out];
+}
+
 export function containsTerm(haystackNorm, term) {
-  const re = new RegExp('(^|[^a-z0-9+#])' + escapeRe(term) + '($|[^a-z0-9+#])');
-  return re.test(haystackNorm);
+  return variants(term).some((v) => {
+    const re = new RegExp('(^|[^a-z0-9+#])' + escapeRe(v) + '($|[^a-z0-9+#])');
+    return re.test(haystackNorm);
+  });
 }
 
 function tokens(norm) {
@@ -68,6 +96,10 @@ export function extractJdKeywords(jd, limit = 30) {
   for (const phrase of MULTI) {
     if (containsTerm(norm, phrase)) counts.set(phrase, 3);
   }
+  // MULTI lists singular and plural forms; keep one entry per phrase now that matching treats them as equal.
+  for (const plural of ['rest apis', 'code reviews']) {
+    if (counts.has(plural) && counts.has(plural.slice(0, -1))) counts.delete(plural);
+  }
   const toks = tokens(norm);
   for (const t of toks) {
     if (SINGLE_SET.has(t)) counts.set(t, (counts.get(t) || 0) + 1);
@@ -78,12 +110,14 @@ export function extractJdKeywords(jd, limit = 30) {
     counts.delete('apis');
     counts.delete('api');
   }
+  // "unit testing" already covers a bare "testing"
+  if (counts.has('unit testing') || counts.has('integration testing')) counts.delete('testing');
   const found = [...counts.entries()].map(([term, count]) => ({ term, count: count + (counts.get(term) > 1 ? 1 : 0) }));
   // Fill with words repeated at least twice if the JD names very few known skills.
   if (found.length < 8) {
     const rep = new Map();
     for (const t of toks) {
-      if (STOP.has(t) || t.length < 3 || /^\d+$/.test(t) || counts.has(t)) continue;
+      if (STOP.has(t) || t.length < 3 || /^\d+$/.test(t) || counts.has(t) || [...counts.keys()].some((k) => k.split(' ').includes(t))) continue;
       rep.set(t, (rep.get(t) || 0) + 1);
     }
     for (const [term, count] of [...rep.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8 - found.length)) {
@@ -128,4 +162,21 @@ export function formattingChecks(resumeText) {
   add(words >= 150, 'Enough content (' + words + ' words)', 'The resume text looks very short (' + words + ' words). Scanned image PDFs cannot be read by ATS systems.');
   add(words <= 1100, 'Length is reasonable', 'The resume is long (' + words + ' words). Aim for one page for freshers, two at most.');
   return { words, checks };
+}
+
+// Claims in AI "strengths" that a resume can only support if it actually uses the same idea.
+const RISKY_CLAIMS = [
+  ['deploy', /\bdeploy/], ['host', /\bhost(ed|ing)\b/], ['launch', /\blaunch/], ['production', /\bproduction\b|\bprod\b/],
+  ['scale', /\bscal(e|ed|ing|able)\b/], ['optimiz', /\boptimi[sz]/], ['led', /\b(led|leading|leader|lead)\b/],
+  ['manag', /\bmanag/], ['improv', /\bimprov/], ['increas', /\bincreas/], ['reduc', /\breduc/], ['award', /\bawards?\b|\bwon\b/],
+  ['publish', /\bpublish/], ['ship', /\bship(ped|ping)?\b/]
+];
+
+// Drop AI strengths that claim something the resume never says (for example "deployed" when it only says "built").
+export function groundStrengths(strengths, resumeText) {
+  const resumeNorm = normalize(resumeText);
+  return (strengths || []).filter((line) => {
+    const norm = normalize(line);
+    return RISKY_CLAIMS.every(([stem, re]) => !re.test(norm) || resumeNorm.includes(stem));
+  });
 }
